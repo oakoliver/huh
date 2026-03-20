@@ -1,0 +1,65 @@
+{
+  "name": "@oakoliver/huh",
+  "version": "1.0.0",
+  "description": "Interactive terminal forms and prompts for TypeScript — zero-dependency port of charmbracelet/huh",
+  "type": "module",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build:esm": "esbuild src/index.ts --bundle --format=esm --platform=node --outfile=dist/esm/index.js --packages=external",
+    "build:cjs": "esbuild src/index.ts --bundle --format=cjs --platform=node --outfile=dist/cjs/index.cjs --packages=external",
+    "build:types": "tsc --emitDeclarationOnly",
+    "build": "rm -rf dist && npm run build:esm && npm run build:cjs && npm run build:types",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "terminal",
+    "tui",
+    "forms",
+    "prompts",
+    "interactive",
+    "cli",
+    "input",
+    "select",
+    "confirm",
+    "multiselect",
+    "huh",
+    "charmbracelet",
+    "zero-dependency"
+  ],
+  "author": "Antonio Oliveira <antonio@oakoliver.com> (https://oakoliver.com)",
+  "license": "MIT",
+  "homepage": "https://github.com/oakoliver/huh",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oakoliver/huh.git"
+  },
+  "bugs": {
+    "url": "https://github.com/oakoliver/huh/issues"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "esbuild": "^0.27.4",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@oakoliver/bubbles": "1.0.1",
+    "@oakoliver/bubbletea": "^1.0.0",
+    "@oakoliver/lipgloss": "^1.0.0"
+  }
+}
