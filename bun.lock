@@ -5,7 +5,7 @@
     "": {
       "name": "@oakoliver/huh",
       "dependencies": {
-        "@oakoliver/bubbles": "^1.2.1",
+        "@oakoliver/bubbles": "^1.2.2",
         "@oakoliver/bubbletea": "^1.2.0",
         "@oakoliver/lipgloss": "^1.1.2",
       },
