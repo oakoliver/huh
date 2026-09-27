@@ -184,6 +184,10 @@ export class Group implements LayoutGroup {
 
     cmds.push(() => updateFieldMsg);
 
+    if (this.selector.empty()) {
+      return Batch(...cmds);
+    }
+
     const selected = this.selector.selected();
     if (selected.skip()) {
       if (this.selector.onLast()) {
@@ -249,6 +253,9 @@ export class Group implements LayoutGroup {
   // -- Navigation --
 
   private nextField(): Cmd[] {
+    if (this.selector.empty()) {
+      return [nextGroup];
+    }
     const blurCmd = this.selector.selected().blur();
     if (this.selector.onLast()) {
       return blurCmd ? [blurCmd, nextGroup] : [nextGroup];
@@ -268,6 +275,9 @@ export class Group implements LayoutGroup {
   }
 
   private prevField(): Cmd[] {
+    if (this.selector.empty()) {
+      return [prevGroup];
+    }
     const blurCmd = this.selector.selected().blur();
     if (this.selector.onFirst()) {
       return blurCmd ? [blurCmd, prevGroup] : [prevGroup];
@@ -302,6 +312,12 @@ export class Group implements LayoutGroup {
   private getContent(): [offset: number, content: string] {
     let fields = "";
     let offset = 0;
+
+    // A group can legitimately have no fields, e.g. when they were all
+    // filtered out before building it. There's nothing to render.
+    if (this.selector.empty()) {
+      return [offset, ""];
+    }
 
     const gap = this.getTheme().fieldSeparator.render();
 
@@ -388,7 +404,7 @@ export class Group implements LayoutGroup {
     const parts: string[] = [];
     const errors = this.errors();
 
-    if (this.showHelp && errors.length === 0) {
+    if (this.showHelp && errors.length === 0 && !this.selector.empty()) {
       const helpView = this.help.shortHelpView(this.selector.selected().keyBinds());
       parts.push(helpView);
     }

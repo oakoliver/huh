@@ -1,7 +1,8 @@
 /**
  * Tests for Select field.
  * Ports: TestSelect, TestSelectDynamic, TestSelectPageNavigation,
- *        TestSelectWithWidthUpdatesViewportWidth from Go tests.
+ *        TestSelectWithWidthUpdatesViewportWidth,
+ *        TestSelectFilteringShowsMatchesAboveTheCursor from Go tests.
  */
 import { describe, test, expect } from "bun:test";
 import { KeyCode, KeyMod } from "@oakoliver/bubbletea";
@@ -132,5 +133,68 @@ describe("Select", () => {
 
     (field as any).withWidth(42);
     expect(field.getViewport().width()).toBe(40);
+  });
+
+  test("TestSelectFilteringShowsMatchesAboveTheCursor (upstream #804)", () => {
+    // Bar and Baz sit at opposite ends of the list, so filtering for "ba"
+    // while the cursor is at the bottom leaves Bar above the visible window.
+    const opts = NewOptions("Bar", "Qux", "Quux", "Foo", "Corge", "Grault", "Garply", "Waldo", "Fred", "Baz");
+
+    const field = NewSelect<string>().options(opts).title("Choose");
+    const f = NewForm(NewGroup(field)).withHeight(6);
+    f.update(f.init());
+
+    // Move to the end of the list, scrolling the viewport away from the top.
+    batchUpdate(f.update(keypress("G")));
+    expect(viewModel(f)).not.toContain("Bar");
+
+    batchUpdate(f.update(keypress("/")));
+    batchUpdate(f.update(keypress("b")));
+    const m = batchUpdate(f.update(keypress("a")));
+
+    const view = viewModel(m);
+    expect(view).toContain("Bar");
+    expect(view).toContain("Baz");
+    // The cursor moves to the first match when the filter text changes.
+    expect(view).toContain("> Bar");
+    expect(field.hovered()).toEqual(["Bar", true]);
+  });
+
+  test("TestSelectFiltering keeps the cursor while navigating an unchanged filter", () => {
+    const field = NewSelect<string>()
+      .options(NewOptions("Bar", "Qux", "Baz", "Bat"))
+      .title("Choose");
+    const f = NewForm(NewGroup(field)).withHeight(10);
+    f.update(f.init());
+
+    batchUpdate(f.update(keypress("/")));
+    batchUpdate(f.update(keypress("b")));
+    batchUpdate(f.update(keypress("a")));
+    expect(field.hovered()).toEqual(["Bar", true]);
+
+    // Arrow keys don't change the filter text, so the cursor is kept.
+    batchUpdate(f.update(codeKeypress(KeyCode.Down)));
+    batchUpdate(f.update(codeKeypress(KeyCode.Down)));
+    expect(field.hovered()).toEqual(["Bat", true]);
+    expect(viewModel(f)).toContain("> Bat");
+
+    // Narrowing the filter resets the cursor to the first match.
+    batchUpdate(f.update(keypress("z")));
+    expect(field.hovered()).toEqual(["Baz", true]);
+  });
+
+  test("unselected options keep their cursor-width indentation inside a sized form", () => {
+    // Guards against lipgloss stripping leading whitespace when a width is set
+    // (regression in @oakoliver/lipgloss 1.1.0, fixed in 1.1.1).
+    const field = NewSelect<string>().options(NewOptions("Foo", "Bar")).title("T");
+    const f = NewForm(NewGroup(field)).withWidth(40);
+    f.update(f.init());
+
+    const lines = viewModel(f).split("\n");
+    expect(lines.some((l) => l.includes("> Foo"))).toBe(true);
+    const bar = lines.find((l) => l.includes("Bar"));
+    expect(bar).toBeDefined();
+    // "> " cursor is two cells wide, so the unselected option is padded by two.
+    expect(bar!).toMatch(/┃   Bar/);
   });
 });

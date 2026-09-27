@@ -218,6 +218,7 @@ export class Select<T> implements Field {
     this.updateViewportSize();
 
     let cmd: Cmd = null;
+    const filterBefore = this._filter.value();
     if (this._filtering) {
       const [, fcmd] = this._filter.update(msg);
       cmd = fcmd;
@@ -384,13 +385,7 @@ export class Select<T> implements Field {
 
       // Refilter if in filter mode
       if (this._filtering) {
-        this._filteredOptions = [...this._options.val];
-        if (this._filter.value() !== "") {
-          this._filteredOptions = this._options.val.filter(o => this._filterFunc(o.key, this._filter.value()));
-        }
-        if (this._filteredOptions.length > 0) {
-          this._selected = Math.min(this._selected, this._filteredOptions.length - 1);
-        }
+        this.updateFilteredOptions(filterBefore);
       }
 
       this.ensureCursorVisible();
@@ -471,6 +466,26 @@ export class Select<T> implements Field {
       }
     }
     this.ensureCursorVisible();
+  }
+
+  /**
+   * Recomputes the filtered options. When the filter text changed, the cursor
+   * moves to the first match and the viewport is re-anchored at the top:
+   * ensureCursorVisible only scrolls the minimum needed, so earlier matches
+   * would otherwise stay hidden above the window (upstream #804).
+   */
+  private updateFilteredOptions(previousFilter: string): void {
+    this._filteredOptions = [...this._options.val];
+    if (this._filter.value() !== "") {
+      this._filteredOptions = this._options.val.filter(o => this._filterFunc(o.key, this._filter.value()));
+    }
+    if (this._filteredOptions.length === 0) return;
+    if (this._filter.value() !== previousFilter) {
+      this._selected = 0;
+      this._viewport.gotoTop();
+      return;
+    }
+    this._selected = Math.min(this._selected, this._filteredOptions.length - 1);
   }
 
   /** Sets the accessor value to the currently selected option. */

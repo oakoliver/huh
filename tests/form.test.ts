@@ -2,7 +2,8 @@
  * Tests for Form, Group, and form-level behaviors.
  * Ports: TestForm, TestHideGroup, TestHideGroupLastAndFirstGroupsNotHidden,
  *        TestPrevGroup, TestDynamicHelp, TestSkip, TestNoTitleOrDescription,
- *        TestTitleRowRender, TestDescriptionRowRender, TestGetFocusedField
+ *        TestTitleRowRender, TestDescriptionRowRender, TestGetFocusedField,
+ *        TestEmptyGroup, TestEmptyForm, TestEmptyGroupIsSkipped
  *        from huh_test.go
  */
 import { describe, test, expect } from "bun:test";
@@ -13,7 +14,7 @@ import {
   NewConfirm, NewNote, NewFilePicker, NewOption, NewOptions,
   FormState, NextField, PrevField,
   nextGroup, prevGroup,
-  type Form,
+  type Form, type Field,
 } from "../src/index.js";
 import { keypress, codeKeypress, modKeypress, batchUpdate, typeText, viewModel } from "./helpers.js";
 
@@ -365,6 +366,88 @@ describe("Form", () => {
     // nextField is triggered through NextField message
     m.update(NextField());
     const field = m.getFocusedField();
-    expect(field.getKey()).toBe("Second");
+    expect(field?.getKey()).toBe("Second");
+  });
+
+  // ---------------------------------------------------------------------------
+  // TestEmptyGroup / TestEmptyForm / TestEmptyGroupIsSkipped (upstream #808)
+  // ---------------------------------------------------------------------------
+
+  test("TestEmptyGroup — a group with no fields renders nothing and completes", () => {
+    // Fields can all be filtered out before the group is built, e.g. when
+    // every value was already given on the command line.
+    const fields: Field[] = [];
+
+    let f = NewForm(NewGroup(...fields));
+    f = batchUpdate(f, f.init()) as Form;
+
+    expect(stripAnsi(f.view()).trim()).toBe("");
+    expect(f.getFocusedField()).toBeNull();
+    expect(f.keyBinds()).toEqual([]);
+    expect(f.errors()).toEqual([]);
+
+    f.update(nextGroup());
+    expect(f.State).toBe(FormState.Completed);
+  });
+
+  test("TestEmptyGroup — group-level rendering and navigation don't throw", () => {
+    const g = NewGroup();
+    expect(g.content()).toBe("");
+    expect(stripAnsi(g.footer()).trim()).toBe("");
+
+    // Init only emits the updateFieldMsg command; there is nothing to focus.
+    const init = g.init();
+    expect(init).not.toBeNull();
+
+    // Next/prev field on an empty group moves straight to the next/prev group.
+    const collect = (cmd: any): any[] => {
+      if (!cmd) return [];
+      const msg = cmd();
+      if (msg?._tag === "BatchMsg") return msg.cmds.flatMap(collect);
+      return [msg];
+    };
+    const [, nextCmd] = g.update(NextField());
+    expect(collect(nextCmd).map((m) => m?._tag)).toContain("nextGroupMsg");
+
+    const [, prevCmd] = g.update(PrevField());
+    expect(collect(prevCmd).map((m) => m?._tag)).toContain("prevGroupMsg");
+  });
+
+  test("TestEmptyForm — a form with no groups is already completed", async () => {
+    let f = NewForm();
+    f = batchUpdate(f, f.init()) as Form;
+
+    expect(stripAnsi(f.view()).trim()).toBe("");
+    expect(f.getFocusedField()).toBeNull();
+    expect(f.keyBinds()).toEqual([]);
+    expect(f.errors()).toEqual([]);
+    expect(f.State).toBe(FormState.Completed);
+
+    // Updates are ignored and run() resolves immediately.
+    const [, cmd] = f.update(keypress("x"));
+    expect(cmd).toBeNull();
+    await expect(f.run()).resolves.toBeUndefined();
+    expect(f.State).toBe(FormState.Completed);
+  });
+
+  test("TestEmptyForm — run() on a fresh empty form marks it completed", async () => {
+    const f = NewForm();
+    expect(f.State).toBe(FormState.Normal);
+    await f.run();
+    expect(f.State).toBe(FormState.Completed);
+  });
+
+  test("TestEmptyGroupIsSkipped — an empty group is treated as hidden", () => {
+    let f = NewForm(
+      NewGroup(),
+      NewGroup(NewNote().description("Bar")),
+    );
+
+    f = batchUpdate(f, f.init()) as Form;
+    f.update(nextGroup());
+
+    expect(stripAnsi(f.view())).toContain("Bar");
+    expect(f.State).toBe(FormState.Normal);
+    expect(f.selector.index()).toBe(1);
   });
 });

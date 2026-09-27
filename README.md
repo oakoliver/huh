@@ -2,6 +2,8 @@
 
 Interactive terminal forms and prompts for TypeScript. A pure TypeScript port of [charmbracelet/huh](https://github.com/charmbracelet/huh) with zero external dependencies.
 
+**Upstream parity:** huh [v2.0.3](https://github.com/charmbracelet/huh/releases/tag/v2.0.3) + `main` @ [`ffb6a97`](https://github.com/charmbracelet/huh/commit/ffb6a97) (includes the post-release fixes #804 and #808). See [CHANGELOG.md](./CHANGELOG.md).
+
 Built on top of [@oakoliver/bubbletea](https://www.npmjs.com/package/@oakoliver/bubbletea), [@oakoliver/bubbles](https://www.npmjs.com/package/@oakoliver/bubbles), and [@oakoliver/lipgloss](https://www.npmjs.com/package/@oakoliver/lipgloss).
 
 ## Features

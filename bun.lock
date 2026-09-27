@@ -5,9 +5,9 @@
     "": {
       "name": "@oakoliver/huh",
       "dependencies": {
-        "@oakoliver/bubbles": "1.0.1",
-        "@oakoliver/bubbletea": "^1.0.0",
-        "@oakoliver/lipgloss": "^1.0.0",
+        "@oakoliver/bubbles": "^1.2.0",
+        "@oakoliver/bubbletea": "^1.2.0",
+        "@oakoliver/lipgloss": "^1.1.1",
       },
       "devDependencies": {
         "@types/node": "^20",

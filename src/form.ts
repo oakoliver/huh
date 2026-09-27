@@ -260,6 +260,7 @@ export class Form implements LayoutForm {
 
   /** Returns the current group's errors. */
   errors(): Error[] {
+    if (this.selector.empty()) return [];
     return this.selector.selected().errors();
   }
 
@@ -268,9 +269,16 @@ export class Form implements LayoutForm {
   //   return this.selector.selected().help;
   // }
 
-  /** Returns the current field's keybindings. */
+  /**
+   * Returns the current field's keybindings.
+   *
+   * Returns an empty list if the form has no groups, or the current group
+   * has no fields.
+   */
   keyBinds(): Binding[] {
+    if (this.selector.empty()) return [];
     const group = this.selector.selected();
+    if (group.selector.empty()) return [];
     return group.selector.selected().keyBinds();
   }
 
@@ -306,15 +314,29 @@ export class Form implements LayoutForm {
     return cmd;
   }
 
-  /** Returns the currently focused field. */
-  getFocusedField(): Field {
-    return this.selector.selected().selector.selected();
+  /**
+   * Returns the currently focused field.
+   *
+   * Returns null if the form has no groups, or the current group has no fields.
+   */
+  getFocusedField(): Field | null {
+    if (this.selector.empty()) return null;
+    const group = this.selector.selected();
+    if (group.selector.empty()) return null;
+    return group.selector.selected();
   }
 
   // -- Tea Model interface --
 
   /** Initializes the form. */
   init(): Cmd {
+    // A form without groups has nothing to ask, so it is already done.
+    if (this.selector.total() === 0) {
+      this.quitting = true;
+      this.State = FormState.Completed;
+      return this.SubmitCmd;
+    }
+
     const cmds: Cmd[] = [];
     this.selector.range((i, group) => {
       if (i === 0) {
@@ -335,8 +357,9 @@ export class Form implements LayoutForm {
 
   /** Updates the form, handling navigation and state transitions. */
   update(msg: Msg): [Form, Cmd] {
-    // If the form is aborted or completed, no need to update.
-    if (this.State !== FormState.Normal) {
+    // If the form is aborted, completed, or has nothing to ask, there's no
+    // need to update it.
+    if (this.State !== FormState.Normal || this.selector.empty()) {
       return [this, null];
     }
 
@@ -382,8 +405,10 @@ export class Form implements LayoutForm {
 
     if (isNextFieldMsg(msg)) {
       // Save the current field's value
-      const field = group.selector.selected();
-      this.results.set(field.getKey(), field.getValue());
+      if (!group.selector.empty()) {
+        const field = group.selector.selected();
+        this.results.set(field.getKey(), field.getValue());
+      }
     }
 
     if (isNextGroupMsg(msg)) {
@@ -446,6 +471,9 @@ export class Form implements LayoutForm {
   }
 
   private isGroupHidden(group: Group): boolean {
+    // A group without fields has nothing to prompt for, so treat it as
+    // hidden and let the form move on to the next one.
+    if (group.selector.empty()) return true;
     const hide = group.hide;
     if (!hide) return false;
     return hide();
@@ -465,7 +493,7 @@ export class Form implements LayoutForm {
 
   /** Renders the form view. */
   view(): string {
-    if (this.quitting) return "";
+    if (this.quitting || this.selector.empty()) return "";
     return this.styles().base.render(this._layout.view(this));
   }
 
@@ -474,7 +502,10 @@ export class Form implements LayoutForm {
     this.SubmitCmd = Quit;
     this.CancelCmd = Interrupt;
 
-    if (this.selector.total() === 0) return;
+    if (this.selector.empty()) {
+      this.State = FormState.Completed;
+      return;
+    }
 
     if (this.accessible) {
       return this.runAccessible();

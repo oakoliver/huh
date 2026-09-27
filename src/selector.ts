@@ -51,6 +51,11 @@ export class Selector<T> {
     return this._index;
   }
 
+  /** Returns true if the selector has no items. */
+  empty(): boolean {
+    return this.items.length === 0;
+  }
+
   /** Returns the total number of items. */
   total(): number {
     return this.items.length;
