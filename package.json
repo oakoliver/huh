@@ -1,6 +1,6 @@
 {
   "name": "@oakoliver/huh",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Interactive terminal forms and prompts for TypeScript — zero-dependency port of charmbracelet/huh",
   "type": "module",
   "main": "./dist/cjs/index.cjs",
@@ -58,8 +58,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@oakoliver/bubbles": "^1.2.0",
+    "@oakoliver/bubbles": "^1.2.1",
     "@oakoliver/bubbletea": "^1.2.0",
-    "@oakoliver/lipgloss": "^1.1.1"
+    "@oakoliver/lipgloss": "^1.1.2"
   }
 }

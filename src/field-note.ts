@@ -35,12 +35,54 @@ import { newStyle } from "@oakoliver/lipgloss";
 // Basic markdown rendering
 // ---------------------------------------------------------------------------
 
-/** Render basic markdown: **bold**, *italic*, `code` → ANSI escapes. */
-function render(s: string): string {
-  s = s.replace(/\*\*(.*?)\*\*/g, "\x1b[1m$1\x1b[0m");
-  s = s.replace(/\*(.*?)\*/g, "\x1b[3m$1\x1b[0m");
-  s = s.replace(/`(.*?)`/g, "\x1b[7m$1\x1b[0m");
-  return s;
+/** Render basic markdown (_italic_, *bold*, `code`) to ANSI escapes. */
+function render(input: string): string {
+  // Port of upstream field_note.go render(): _italic_, *bold*, `code`, and
+  // backslash escapes. Mirrors upstream exactly, including that characters
+  // inside a code span are written verbatim.
+  let result = "";
+  let italic = false;
+  let bold = false;
+  let codeblock = false;
+  let escape = false;
+
+  for (const char of input) {
+    if (escape || codeblock) {
+      result += char;
+      escape = false;
+      continue;
+    }
+    switch (char) {
+      case "\\":
+        escape = true;
+        break;
+      case "_":
+        result += italic ? "\x1b[23m" : "\x1b[3m";
+        italic = !italic;
+        break;
+      case "*":
+        result += bold ? "\x1b[22m" : "\x1b[1m";
+        bold = !bold;
+        break;
+      case "`":
+        if (!codeblock) {
+          result += "\x1b[0;37;40m ";
+          codeblock = true;
+        } else {
+          result += " \x1b[0m";
+          codeblock = false;
+          if (bold) result += "\x1b[1m";
+          if (italic) result += "\x1b[3m";
+        }
+        break;
+      default:
+        result += char;
+    }
+  }
+
+  // Reset any open formatting
+  result += "\x1b[0m";
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -72,7 +114,7 @@ export class Note implements Field {
     this._width = 0;
     this._height = 0;
     this._theme = { theme: (isDark) => ThemeCharm(isDark) };
-    this._hasDarkBg = true;
+    this._hasDarkBg = false;
     this._keymap = NewDefaultKeyMap().note;
   }
 
@@ -144,6 +186,9 @@ export class Note implements Field {
   init(): Cmd { return null; }
 
   update(msg: Msg): [Note, Cmd] {
+    if ((msg as any)?._tag === "BackgroundColorMsg") {
+      this._hasDarkBg = (msg as any).isDark();
+    }
     const cmds: Cmd[] = [];
 
     if (isUpdateFieldMsg(msg)) {
@@ -197,7 +242,7 @@ export class Note implements Field {
     let sb = "";
 
     if (this._title.val || this._title.fn) {
-      sb += styles.title.render(maxWidth > 0 ? wrap(this._title.val, maxWidth) : this._title.val);
+      sb += styles.noteTitle.render(maxWidth > 0 ? wrap(this._title.val, maxWidth) : this._title.val);
     }
     if (this._description.val || this._description.fn) {
       sb += "\n";
@@ -209,7 +254,7 @@ export class Note implements Field {
     }
     if (this._showNextButton) {
       sb += "\n";
-      sb += styles.focusedButton.render(this._nextLabel);
+      sb += styles.next.render(this._nextLabel);
     }
 
     return styles.card

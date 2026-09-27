@@ -383,8 +383,7 @@ export class Form implements LayoutForm {
         // Calculate needed height (max of all groups)
         let neededHeight = 0;
         this.selector.range((_i, g) => {
-          const rh = g.view().split("\n").length;
-          neededHeight = Math.max(neededHeight, rh);
+          neededHeight = Math.max(neededHeight, g.rawHeight());
           return true;
         });
         this.selector.range((_i, g) => {

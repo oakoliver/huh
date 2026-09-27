@@ -101,7 +101,7 @@ export class MultiSelect<T> implements Field {
     this._width = 0;
     this._height = 0;
     this._theme = { theme: (isDark) => ThemeCharm(isDark) };
-    this._hasDarkBg = true;
+    this._hasDarkBg = false;
     this._keymap = NewDefaultKeyMap().multiSelect;
     this._filterable = true;
     this._filter.prompt = "/";
@@ -400,6 +400,9 @@ export class MultiSelect<T> implements Field {
   init(): Cmd { return null; }
 
   update(msg: Msg): [MultiSelect<T>, Cmd] {
+    if ((msg as any)?._tag === "BackgroundColorMsg") {
+      this._hasDarkBg = (msg as any).isDark();
+    }
     const cmds: Cmd[] = [];
 
     // Enforce height on the viewport during update

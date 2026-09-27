@@ -100,7 +100,7 @@ export class Select<T> implements Field {
     this._width = 0;
     this._height = 0;
     this._theme = { theme: (isDark) => ThemeCharm(isDark) };
-    this._hasDarkBg = true;
+    this._hasDarkBg = false;
     this._keymap = NewDefaultKeyMap().select;
   }
 
@@ -215,6 +215,9 @@ export class Select<T> implements Field {
   init(): Cmd { return null; }
 
   update(msg: Msg): [Select<T>, Cmd] {
+    if ((msg as any)?._tag === "BackgroundColorMsg") {
+      this._hasDarkBg = (msg as any).isDark();
+    }
     this.updateViewportSize();
 
     let cmd: Cmd = null;
@@ -631,12 +634,16 @@ export class Select<T> implements Field {
     }
     if (this._description.val) parts.push(styles.description.render(this._description.val));
 
-    const hasPrev = this._selected > 0;
-    const hasNext = this._selected < this._filteredOptions.length - 1;
-    const prev = hasPrev ? styles.prevIndicator.render() : " ".repeat(stringWidth(styles.prevIndicator.render()));
-    const next = hasNext ? styles.nextIndicator.render() : " ".repeat(stringWidth(styles.nextIndicator.render()));
-    const current = this._filteredOptions.length > 0 ? this._filteredOptions[this._selected].key : "";
-    parts.push(joinHorizontal(Left, prev, styles.selectedOption.render(current), next));
+    // Upstream: indicators are always drawn, faint when at either end.
+    const option = this._filteredOptions.length > 0
+      ? styles.selectedOption.render(this._filteredOptions[this._selected].key)
+      : styles.textInput.placeholder.render("No matches");
+    parts.push(joinHorizontal(
+      Left,
+      styles.prevIndicator.faint(this._selected <= 0).render(),
+      option,
+      styles.nextIndicator.faint(this._selected === this._filteredOptions.length - 1).render(),
+    ));
 
     return styles.base.width(this._width).render(parts.join("\n"));
   }

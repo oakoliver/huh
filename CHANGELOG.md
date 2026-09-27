@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.1 — upstream themes, field spacing and README
+
+Same upstream target as 1.1.0 (huh v2.0.3 + `main` @ `ffb6a97`). Divergences found while making screenshots, each checked against upstream Go output.
+
+### Fixed
+
+- **Field spacing.** Every theme's `fieldSeparator` is `"\n\n"` again, as in upstream `ThemeBase`, so fields have a blank line between them. It used to be `"\n"`.
+- **Themes rewritten from upstream `theme.go`.** The five built-in themes (Base, Charm, Dracula, Base16, Catppuccin) had been approximated and now follow `theme.go` style by style. `ThemeCharm` was pink everywhere; it now has indigo titles, green selections and cream-on-fuchsia buttons, with upstream's light/dark pairs. `ThemeDracula` uses purple titles and yellow selectors, `ThemeBase16` uses ANSI 6/3/2/5 (including upstream's no-op text-input assignments), and `ThemeCatppuccin` uses mauve titles, rosewater cursor, subtext border and themed help. `ThemeBase` now carries only upstream's structure: buttons with margin, placeholder colour 8, `→`/`←` indicators and bubbles' default help styles. A test compares every style (colours, border, padding, margin, bold, faint, strings) in both variants against a dump of upstream.
+- **`FieldStyles` matches upstream.** Adds `noteTitle`, `next` and `textInput.cursorText`. `noneStyle` is now optional and deprecated.
+- **Light/dark detection in fields.** Fields started out dark and ignored `BackgroundColorMsg`, so their light variants were never used. As in upstream, they now start light and follow `BackgroundColorMsg`.
+- **Note** uses `noteTitle` and `next` (Charm: bold indigo title with a blank line under it). Its description renderer is upstream's: `_italic_`, `*bold*`, `` `code` `` and backslash escapes.
+- **Select (inline)** always draws `←`/`→`, faint at either end, and shows "No matches" when the filter matches nothing.
+- **Confirm** view ported from upstream: a blank line between the header and the buttons, buttons joined with their margin, `y`/`n` help labels from the button text, and upstream's help key order.
+- **Input/Text width.** The text input and textarea were sized to the full field width, so their padding wrapped onto extra lines. They now subtract the frame (and the prompt, for Input) like upstream, and Input honours `charLimit` when that is narrower. Input only restyles the focused state, and Text uses upstream's cursor-line and cursor colour.
+- **Form height.** On `WindowSizeMsg` the form sizes groups from their content height (upstream `rawHeight`) and no longer adds an extra blank line. A new group's starting height leaves out the help footer, as upstream does.
+- **README.** The examples used `.value({ value })`, `.theme(ThemeCharm())`, `Run(form)` and methods that do not exist. They now use `.value(getter, setter)`, `.withTheme(ThemeFunc(...))` and `form.run()`. Each example was type-checked, and the interactive ones were run in a pty.
+
+### Dependencies
+
+- `@oakoliver/lipgloss` `^1.1.2` (upstream escape bytes: `ESC[m` resets) and `@oakoliver/bubbles` `^1.2.1` (OSC parsing fix).
+
 ## 1.1.0 — parity with huh v2.0.3 + main @ ffb6a97
 
 Upstream target: [charmbracelet/huh v2.0.3](https://github.com/charmbracelet/huh/releases/tag/v2.0.3) plus `main` at [`ffb6a97`](https://github.com/charmbracelet/huh/commit/ffb6a97).

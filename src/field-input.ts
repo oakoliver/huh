@@ -3,7 +3,7 @@
  */
 import { newTextInput, TextInputModel, type Binding, matches, EchoMode } from "@oakoliver/bubbles";
 import { type Cmd, type Msg, Batch, type KeyPressMsg } from "@oakoliver/bubbletea";
-import { joinHorizontal, Left } from "@oakoliver/lipgloss";
+import { joinHorizontal, Left, stringWidth } from "@oakoliver/lipgloss";
 import { type Accessor, EmbeddedAccessor, PointerAccessor } from "./accessor.js";
 import {
   Eval, type UpdateTitleMsg, type UpdateDescriptionMsg, type UpdatePlaceholderMsg,
@@ -100,7 +100,7 @@ export class Input implements Field {
   private _inline = false;
   private _prompt = "> ";
   private _theme: Theme = { theme: (d) => ThemeCharm(d) };
-  private _hasDarkBg = true;
+  private _hasDarkBg = false;
   private _keymap: InputKeyMap;
 
   constructor() {
@@ -184,6 +184,9 @@ export class Input implements Field {
   init(): Cmd { return null; }
 
   update(msg: Msg): [Input, Cmd] {
+    if ((msg as any)?._tag === "BackgroundColorMsg") {
+      this._hasDarkBg = (msg as any).isDark();
+    }
     const cmds: Cmd[] = [];
 
     if (isUpdateFieldMsg(msg)) {
@@ -250,11 +253,18 @@ export class Input implements Field {
     const ti = styles.textInput;
     const fg = ti.cursor.getForeground();
     const prev = this._textinput.styles();
-    const ss = { text: ti.text, placeholder: ti.placeholder, suggestion: ti.placeholder, prompt: ti.prompt };
+    // Upstream only overrides the focused state; blurred keeps the textinput defaults.
     this._textinput.setStyles({
-      focused: ss, blurred: ss,
+      ...prev,
+      focused: { ...prev.focused, prompt: ti.prompt, text: ti.text, placeholder: ti.placeholder },
       cursor: { ...prev.cursor, color: typeof fg === "string" ? fg : null },
     });
+
+    // Adjust text input size to its char limit if it fits in its width.
+    const maxWidth = this._width - styles.base.getHorizontalFrameSize();
+    if (this._textinput.charLimit > 0) {
+      this._textinput.setWidth(Math.max(Math.min(this._textinput.charLimit, this._textinput.width(), maxWidth), 0));
+    }
 
     if (this._inline) {
       // In inline mode, join title + description + textinput horizontally
@@ -285,7 +295,19 @@ export class Input implements Field {
 
   withTheme(theme: Theme): Field { this._theme = theme; return this; }
   withKeyMap(k: KeyMap): Field { this._keymap = cloneKeyMapSection(k.input); return this; }
-  withWidth(width: number): Field { this._width = width; this._textinput.setWidth(width); return this; }
+  withWidth(width: number): Field {
+    const styles = this.activeStyles();
+    this._width = width;
+    const frameSize = styles.base.getHorizontalFrameSize();
+    const promptWidth = stringWidth(this._textinput.styles().focused.prompt.render(this._textinput.prompt));
+    const titleWidth = stringWidth(styles.title.render(this._title.val));
+    const descriptionWidth = stringWidth(styles.description.render(this._description.val));
+    this._textinput.setWidth(width - frameSize - promptWidth - 1);
+    if (this._inline) {
+      this._textinput.setWidth(this._textinput.width() - titleWidth - descriptionWidth);
+    }
+    return this;
+  }
   withHeight(_h: number): Field { return this; }
   withPosition(p: FieldPosition): Field {
     this._keymap.prev.setEnabled(!isFirst(p));

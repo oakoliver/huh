@@ -1,75 +1,90 @@
 /**
  * Theme — theming system for form fields.
- * Port of charmbracelet/huh theme.go
+ * Port of charmbracelet/huh theme.go (v2.0.3).
  *
  * Includes 5 built-in themes: Base, Charm, Dracula, Base16, Catppuccin.
+ *
+ * lipgloss styles are immutable (every setter returns a copy), so the Go
+ * value-copy semantics (`t.Blurred = t.Focused`) carry over directly.
  */
 
-import { newStyle, type Style } from "@oakoliver/lipgloss";
-import {
-  normalBorder,
-  roundedBorder,
-  thickBorder,
-  hiddenBorder,
-} from "@oakoliver/lipgloss";
-import type { HelpStyles } from "@oakoliver/bubbles";
+import { newStyle, type Style, type Color } from "@oakoliver/lipgloss";
+import { thickBorder, hiddenBorder } from "@oakoliver/lipgloss";
+import { helpDefaultDarkStyles, type HelpStyles } from "@oakoliver/bubbles";
 
 // ---------------------------------------------------------------------------
 // Style structures
 // ---------------------------------------------------------------------------
 
-/** TextInputStyles are the styles for text input fields. */
+/** TextInputStyles are the styles for text inputs. */
 export interface TextInputStyles {
   cursor: Style;
+  cursorText: Style;
   placeholder: Style;
   prompt: Style;
   text: Style;
 }
 
-/** FieldStyles are the styles for a field. */
+/** FieldStyles are the styles for input fields. */
 export interface FieldStyles {
   base: Style;
   title: Style;
   description: Style;
   errorIndicator: Style;
   errorMessage: Style;
+
+  // Select styles.
   selectSelector: Style;
+  option: Style;
   nextIndicator: Style;
   prevIndicator: Style;
-  option: Style;
+
+  // FilePicker styles.
+  directory: Style;
+  file: Style;
+
+  // Multi-select styles.
   multiSelectSelector: Style;
   selectedOption: Style;
   selectedPrefix: Style;
   unselectedOption: Style;
   unselectedPrefix: Style;
+
+  // Textinput and textarea styles.
+  textInput: TextInputStyles;
+
+  // Confirm styles.
   focusedButton: Style;
   blurredButton: Style;
-  textInput: TextInputStyles;
+
+  // Card styles.
   card: Style;
-  noneStyle: Style;
-  directory: Style;
-  file: Style;
+  noteTitle: Style;
+  next: Style;
+
+  /** @deprecated Not part of upstream huh; kept (as an empty style) for compatibility. */
+  noneStyle?: Style;
 }
 
-/** GroupStyles are the styles for a group of fields. */
+/** GroupStyles are the styles for a group. */
 export interface GroupStyles {
   base: Style;
   title: Style;
   description: Style;
 }
 
-/** FormStyles are the styles for the form. */
+/** FormStyles are the styles for a form. */
 export interface FormStyles {
   base: Style;
 }
 
-/** Styles is the full set of styles for a themed form. */
+/** Styles is a collection of styles for components of the form. */
 export interface Styles {
   form: FormStyles;
   group: GroupStyles;
   fieldSeparator: Style;
-  focused: FieldStyles;
   blurred: FieldStyles;
+  focused: FieldStyles;
   help: HelpStyles;
 }
 
@@ -99,381 +114,241 @@ export function ThemeFunc(fn: (isDark: boolean) => Styles): Theme {
 }
 
 // ---------------------------------------------------------------------------
-// Color helper — lipgloss.LightDark equivalent
+// Helpers
 // ---------------------------------------------------------------------------
 
-/** Returns the light or dark color based on the isDark flag. */
-function lightDark(isDark: boolean): (light: string, dark: string) => string {
-  return (light: string, dark: string) => (isDark ? dark : light);
+/** lipgloss.LightDark: picks the light or dark colour based on isDark. */
+function lightDark(isDark: boolean): (light: Color, dark: Color) => Color {
+  return (light, dark) => (isDark ? dark : light);
 }
 
-// ---------------------------------------------------------------------------
-// Button padding constants
-// ---------------------------------------------------------------------------
+/** Shallow copy of a FieldStyles value (Go struct assignment). */
+function copyFieldStyles(f: FieldStyles): FieldStyles {
+  return { ...f, textInput: { ...f.textInput } };
+}
+
+function emptyFieldStyles(): FieldStyles {
+  const s = newStyle();
+  return {
+    base: s, title: s, description: s, errorIndicator: s, errorMessage: s,
+    selectSelector: s, option: s, nextIndicator: s, prevIndicator: s,
+    directory: s, file: s,
+    multiSelectSelector: s, selectedOption: s, selectedPrefix: s, unselectedOption: s, unselectedPrefix: s,
+    textInput: { cursor: s, cursorText: s, placeholder: s, prompt: s, text: s },
+    focusedButton: s, blurredButton: s,
+    card: s, noteTitle: s, next: s,
+    noneStyle: s,
+  };
+}
+
 const buttonPaddingHorizontal = 2;
 const buttonPaddingVertical = 0;
 
 // ---------------------------------------------------------------------------
-// ThemeBase — the base theme
+// ThemeBase
 // ---------------------------------------------------------------------------
 
-export function ThemeBase(isDark: boolean): Styles {
-  const f = lightDark(isDark);
-
-  const focused: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(thickBorder()).borderLeft(true).borderForeground(f("8", "7")),
-    title: newStyle().foreground(f("8", "7")),
-    description: newStyle().foreground(f("8", "7")),
-    errorIndicator: newStyle().foreground(f("8", "7")).setString(" *"),
-    errorMessage: newStyle().foreground(f("8", "7")),
-    selectSelector: newStyle().foreground(f("8", "7")).setString("> "),
-    nextIndicator: newStyle().foreground(f("8", "7")).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(f("8", "7")).setString("  \u2191 "),
-    option: newStyle().foreground(f("15", "0")),
-    multiSelectSelector: newStyle().foreground(f("8", "7")).setString("> "),
-    selectedOption: newStyle().foreground(f("8", "7")),
-    selectedPrefix: newStyle().foreground(f("8", "7")).setString("[\u2022] "),
-    unselectedOption: newStyle().foreground(f("15", "0")),
-    unselectedPrefix: newStyle().foreground(f("8", "7")).setString("[ ] "),
-    focusedButton: newStyle().foreground(f("15", "0")).background(f("8", "7")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(f("15", "0")).background(f("0", "15")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(f("8", "7")),
-      placeholder: newStyle().foreground(f("8", "7")),
-      prompt: newStyle().foreground(f("8", "7")),
-      text: newStyle().foreground(f("15", "0")),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(f("4", "12")),
-    file: newStyle(),
-  };
-
-  const blurred: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(hiddenBorder()).borderLeft(true),
-    title: newStyle().foreground(f("8", "7")),
-    description: newStyle().foreground(f("8", "7")),
-    errorIndicator: newStyle().foreground(f("8", "7")).setString(" *"),
-    errorMessage: newStyle().foreground(f("8", "7")),
-    selectSelector: newStyle().foreground(f("8", "7")).setString("> "),
-    nextIndicator: newStyle().foreground(f("8", "7")).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(f("8", "7")).setString("  \u2191 "),
-    option: newStyle().foreground(f("15", "0")),
-    multiSelectSelector: newStyle().foreground(f("8", "7")).setString("> "),
-    selectedOption: newStyle().foreground(f("8", "7")),
-    selectedPrefix: newStyle().foreground(f("8", "7")).setString("[\u2022] "),
-    unselectedOption: newStyle().foreground(f("15", "0")),
-    unselectedPrefix: newStyle().foreground(f("8", "7")).setString("[ ] "),
-    focusedButton: newStyle().foreground(f("15", "0")).background(f("8", "7")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(f("15", "0")).background(f("0", "15")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(f("8", "7")),
-      placeholder: newStyle().foreground(f("8", "7")),
-      prompt: newStyle().foreground(f("8", "7")),
-      text: newStyle().foreground(f("15", "0")),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(f("4", "12")),
-    file: newStyle(),
-  };
-
-  return {
+/** ThemeBase returns a new base theme with general styles to be inherited by other themes. */
+export function ThemeBase(_isDark: boolean): Styles {
+  const t: Styles = {
     form: { base: newStyle() },
-    group: {
-      base: newStyle(),
-      title: newStyle().foreground(f("8", "7")),
-      description: newStyle().foreground(f("8", "7")),
-    },
-    fieldSeparator: newStyle().setString("\n"),
-    focused,
-    blurred,
-    help: {
-      ellipsis: newStyle().foreground(f("8", "7")),
-      shortKey: newStyle().foreground(f("8", "7")),
-      shortDesc: newStyle().foreground(f("8", "7")),
-      shortSeparator: newStyle().foreground(f("8", "7")),
-      fullKey: newStyle().foreground(f("8", "7")),
-      fullDesc: newStyle().foreground(f("8", "7")),
-      fullSeparator: newStyle().foreground(f("8", "7")),
-    },
+    group: { base: newStyle(), title: newStyle(), description: newStyle() },
+    fieldSeparator: newStyle().setString("\n\n"),
+    focused: emptyFieldStyles(),
+    blurred: emptyFieldStyles(),
+    help: helpDefaultDarkStyles(),
   };
+
+  const button = newStyle()
+    .padding(buttonPaddingVertical, buttonPaddingHorizontal)
+    .marginRight(1);
+
+  // Focused styles.
+  t.focused.base = newStyle().paddingLeft(1).borderStyle(thickBorder()).borderLeft(true);
+  t.focused.card = t.focused.base;
+  t.focused.errorIndicator = newStyle().setString(" *");
+  t.focused.errorMessage = newStyle().setString(" *");
+  t.focused.selectSelector = newStyle().setString("> ");
+  t.focused.nextIndicator = newStyle().marginLeft(1).setString("→");
+  t.focused.prevIndicator = newStyle().marginRight(1).setString("←");
+  t.focused.multiSelectSelector = newStyle().setString("> ");
+  t.focused.selectedPrefix = newStyle().setString("[•] ");
+  t.focused.unselectedPrefix = newStyle().setString("[ ] ");
+  t.focused.focusedButton = button.foreground("0").background("7");
+  t.focused.blurredButton = button.foreground("7").background("0");
+  t.focused.textInput.placeholder = newStyle().foreground("8");
+
+  // Blurred styles.
+  t.blurred = copyFieldStyles(t.focused);
+  t.blurred.base = t.blurred.base.borderStyle(hiddenBorder());
+  t.blurred.card = t.blurred.base;
+  t.blurred.multiSelectSelector = newStyle().setString("  ");
+  t.blurred.nextIndicator = newStyle();
+  t.blurred.prevIndicator = newStyle();
+
+  return t;
 }
 
 // ---------------------------------------------------------------------------
 // ThemeCharm
 // ---------------------------------------------------------------------------
 
+/** ThemeCharm returns a new theme based on the Charm color scheme. */
 export function ThemeCharm(isDark: boolean): Styles {
-  const f = lightDark(isDark);
+  const t = ThemeBase(isDark);
+  const ld = lightDark(isDark);
 
-  const focused: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(thickBorder()).borderLeft(true).borderForeground(f("205", "212")),
-    title: newStyle().foreground(f("205", "212")),
-    description: newStyle().foreground(f("243", "243")),
-    errorIndicator: newStyle().foreground(f("196", "196")).setString(" *"),
-    errorMessage: newStyle().foreground(f("196", "196")),
-    selectSelector: newStyle().foreground(f("205", "212")).setString("> "),
-    nextIndicator: newStyle().foreground(f("205", "212")).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(f("205", "212")).setString("  \u2191 "),
-    option: newStyle().foreground(f("15", "255")),
-    multiSelectSelector: newStyle().foreground(f("205", "212")).setString("> "),
-    selectedOption: newStyle().foreground(f("205", "212")),
-    selectedPrefix: newStyle().foreground(f("205", "212")).setString("\u2713 "),
-    unselectedOption: newStyle().foreground(f("15", "255")),
-    unselectedPrefix: newStyle().foreground(f("243", "243")).setString("\u2022 "),
-    focusedButton: newStyle().foreground(f("255", "255")).background(f("205", "212")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(f("15", "255")).background(f("0", "0")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(f("205", "212")),
-      placeholder: newStyle().foreground(f("243", "243")),
-      prompt: newStyle().foreground(f("205", "212")),
-      text: newStyle().foreground(f("15", "255")),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(f("4", "12")),
-    file: newStyle(),
-  };
+  const normalFg = ld("252", "235");
+  const indigo = ld("#5A56E0", "#7571F9");
+  const cream = ld("#FFFDF5", "#FFFDF5");
+  const fuchsia = "#F780E2";
+  const green = ld("#02BA84", "#02BF87");
+  const red = ld("#FF4672", "#ED567A");
 
-  const blurred: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(hiddenBorder()).borderLeft(true),
-    title: newStyle().foreground(f("243", "243")),
-    description: newStyle().foreground(f("243", "243")),
-    errorIndicator: newStyle().foreground(f("196", "196")).setString(" *"),
-    errorMessage: newStyle().foreground(f("196", "196")),
-    selectSelector: newStyle().foreground(f("243", "243")).setString("> "),
-    nextIndicator: newStyle().foreground(f("243", "243")).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(f("243", "243")).setString("  \u2191 "),
-    option: newStyle().foreground(f("243", "243")),
-    multiSelectSelector: newStyle().foreground(f("243", "243")).setString("> "),
-    selectedOption: newStyle().foreground(f("205", "212")),
-    selectedPrefix: newStyle().foreground(f("205", "212")).setString("\u2713 "),
-    unselectedOption: newStyle().foreground(f("243", "243")),
-    unselectedPrefix: newStyle().foreground(f("243", "243")).setString("\u2022 "),
-    focusedButton: newStyle().foreground(f("255", "255")).background(f("205", "212")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(f("15", "255")).background(f("0", "0")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(f("205", "212")),
-      placeholder: newStyle().foreground(f("243", "243")),
-      prompt: newStyle().foreground(f("205", "212")),
-      text: newStyle().foreground(f("243", "243")),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(f("4", "12")),
-    file: newStyle(),
-  };
+  const f = t.focused;
+  f.base = f.base.borderForeground("238");
+  f.card = f.base;
+  f.title = f.title.foreground(indigo).bold(true);
+  f.noteTitle = f.noteTitle.foreground(indigo).bold(true).marginBottom(1);
+  f.directory = f.directory.foreground(indigo);
+  f.description = f.description.foreground(ld("", "243"));
+  f.errorIndicator = f.errorIndicator.foreground(red);
+  f.errorMessage = f.errorMessage.foreground(red);
+  f.selectSelector = f.selectSelector.foreground(fuchsia);
+  f.nextIndicator = f.nextIndicator.foreground(fuchsia);
+  f.prevIndicator = f.prevIndicator.foreground(fuchsia);
+  f.option = f.option.foreground(normalFg);
+  f.multiSelectSelector = f.multiSelectSelector.foreground(fuchsia);
+  f.selectedOption = f.selectedOption.foreground(green);
+  f.selectedPrefix = newStyle().foreground(ld("#02CF92", "#02A877")).setString("✓ ");
+  f.unselectedPrefix = newStyle().foreground(ld("", "243")).setString("• ");
+  f.unselectedOption = f.unselectedOption.foreground(normalFg);
+  f.focusedButton = f.focusedButton.foreground(cream).background(fuchsia);
+  f.next = f.focusedButton;
+  f.blurredButton = f.blurredButton.foreground(normalFg).background(ld("237", "252"));
 
-  return {
-    form: { base: newStyle() },
-    group: {
-      base: newStyle(),
-      title: newStyle().foreground(f("205", "212")).bold(true),
-      description: newStyle().foreground(f("243", "243")),
-    },
-    fieldSeparator: newStyle().setString("\n"),
-    focused,
-    blurred,
-    help: {
-      ellipsis: newStyle().foreground(f("243", "243")),
-      shortKey: newStyle().foreground(f("243", "243")),
-      shortDesc: newStyle().foreground(f("243", "243")),
-      shortSeparator: newStyle().foreground(f("243", "243")),
-      fullKey: newStyle().foreground(f("243", "243")),
-      fullDesc: newStyle().foreground(f("243", "243")),
-      fullSeparator: newStyle().foreground(f("243", "243")),
-    },
-  };
+  f.textInput.cursor = f.textInput.cursor.foreground(green);
+  f.textInput.placeholder = f.textInput.placeholder.foreground(ld("248", "238"));
+  f.textInput.prompt = f.textInput.prompt.foreground(fuchsia);
+
+  t.blurred = copyFieldStyles(t.focused);
+  t.blurred.base = t.focused.base.borderStyle(hiddenBorder());
+  t.blurred.card = t.blurred.base;
+  t.blurred.nextIndicator = newStyle();
+  t.blurred.prevIndicator = newStyle();
+
+  t.group.title = t.focused.title;
+  t.group.description = t.focused.description;
+  return t;
 }
 
 // ---------------------------------------------------------------------------
 // ThemeDracula
 // ---------------------------------------------------------------------------
 
+/** ThemeDracula returns a new theme based on the Dracula color scheme. */
 export function ThemeDracula(isDark: boolean): Styles {
-  const f = lightDark(isDark);
-  // Dracula palette
-  const _purple = "#bd93f9";
-  const _pink = "#ff79c6";
-  const _red = "#ff5555";
-  const _fg = f("#282a36", "#f8f8f2");
-  const _bg = f("#f8f8f2", "#282a36");
-  const _comment = "#6272a4";
-  const _green = "#50fa7b";
+  const t = ThemeBase(isDark);
 
-  const focused: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(thickBorder()).borderLeft(true).borderForeground(_pink),
-    title: newStyle().foreground(_pink),
-    description: newStyle().foreground(_comment),
-    errorIndicator: newStyle().foreground(_red).setString(" *"),
-    errorMessage: newStyle().foreground(_red),
-    selectSelector: newStyle().foreground(_pink).setString("> "),
-    nextIndicator: newStyle().foreground(_pink).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(_pink).setString("  \u2191 "),
-    option: newStyle().foreground(_fg),
-    multiSelectSelector: newStyle().foreground(_pink).setString("> "),
-    selectedOption: newStyle().foreground(_green),
-    selectedPrefix: newStyle().foreground(_green).setString("[\u2022] "),
-    unselectedOption: newStyle().foreground(_fg),
-    unselectedPrefix: newStyle().foreground(_comment).setString("[ ] "),
-    focusedButton: newStyle().foreground(_bg).background(_pink).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(_fg).background(_bg).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(_pink),
-      placeholder: newStyle().foreground(_comment),
-      prompt: newStyle().foreground(_pink),
-      text: newStyle().foreground(_fg),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(_purple),
-    file: newStyle(),
-  };
+  const background = "#282a36";
+  const selection = "#44475a";
+  const foreground = "#f8f8f2";
+  const comment = "#6272a4";
+  const green = "#50fa7b";
+  const purple = "#bd93f9";
+  const red = "#ff5555";
+  const yellow = "#f1fa8c";
 
-  const blurred: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(hiddenBorder()).borderLeft(true),
-    title: newStyle().foreground(_comment),
-    description: newStyle().foreground(_comment),
-    errorIndicator: newStyle().foreground(_red).setString(" *"),
-    errorMessage: newStyle().foreground(_red),
-    selectSelector: newStyle().foreground(_comment).setString("> "),
-    nextIndicator: newStyle().foreground(_comment).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(_comment).setString("  \u2191 "),
-    option: newStyle().foreground(_comment),
-    multiSelectSelector: newStyle().foreground(_comment).setString("> "),
-    selectedOption: newStyle().foreground(_green),
-    selectedPrefix: newStyle().foreground(_green).setString("[\u2022] "),
-    unselectedOption: newStyle().foreground(_comment),
-    unselectedPrefix: newStyle().foreground(_comment).setString("[ ] "),
-    focusedButton: newStyle().foreground(_bg).background(_pink).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(_fg).background(_bg).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(_pink),
-      placeholder: newStyle().foreground(_comment),
-      prompt: newStyle().foreground(_pink),
-      text: newStyle().foreground(_comment),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(_purple),
-    file: newStyle(),
-  };
+  const f = t.focused;
+  f.base = f.base.borderForeground(selection);
+  f.card = f.base;
+  f.title = f.title.foreground(purple);
+  f.noteTitle = f.noteTitle.foreground(purple);
+  f.description = f.description.foreground(comment);
+  f.errorIndicator = f.errorIndicator.foreground(red);
+  f.directory = f.directory.foreground(purple);
+  f.file = f.file.foreground(foreground);
+  f.errorMessage = f.errorMessage.foreground(red);
+  f.selectSelector = f.selectSelector.foreground(yellow);
+  f.nextIndicator = f.nextIndicator.foreground(yellow);
+  f.prevIndicator = f.prevIndicator.foreground(yellow);
+  f.option = f.option.foreground(foreground);
+  f.multiSelectSelector = f.multiSelectSelector.foreground(yellow);
+  f.selectedOption = f.selectedOption.foreground(green);
+  f.selectedPrefix = f.selectedPrefix.foreground(green);
+  f.unselectedOption = f.unselectedOption.foreground(foreground);
+  f.unselectedPrefix = f.unselectedPrefix.foreground(comment);
+  f.focusedButton = f.focusedButton.foreground(yellow).background(purple).bold(true);
+  f.blurredButton = f.blurredButton.foreground(foreground).background(background);
 
-  return {
-    form: { base: newStyle() },
-    group: {
-      base: newStyle(),
-      title: newStyle().foreground(_pink).bold(true),
-      description: newStyle().foreground(_comment),
-    },
-    fieldSeparator: newStyle().setString("\n"),
-    focused,
-    blurred,
-    help: {
-      ellipsis: newStyle().foreground(_comment),
-      shortKey: newStyle().foreground(_comment),
-      shortDesc: newStyle().foreground(_comment),
-      shortSeparator: newStyle().foreground(_comment),
-      fullKey: newStyle().foreground(_comment),
-      fullDesc: newStyle().foreground(_comment),
-      fullSeparator: newStyle().foreground(_comment),
-    },
-  };
+  f.textInput.cursor = f.textInput.cursor.foreground(yellow);
+  f.textInput.placeholder = f.textInput.placeholder.foreground(comment);
+  f.textInput.prompt = f.textInput.prompt.foreground(yellow);
+
+  t.blurred = copyFieldStyles(t.focused);
+  t.blurred.base = t.blurred.base.borderStyle(hiddenBorder());
+  t.blurred.card = t.blurred.base;
+  t.blurred.nextIndicator = newStyle();
+  t.blurred.prevIndicator = newStyle();
+
+  t.group.title = t.focused.title;
+  t.group.description = t.focused.description;
+  return t;
 }
 
 // ---------------------------------------------------------------------------
 // ThemeBase16
 // ---------------------------------------------------------------------------
 
+/** ThemeBase16 returns a new theme based on the base16 color scheme. */
 export function ThemeBase16(isDark: boolean): Styles {
-  const f = lightDark(isDark);
+  const t = ThemeBase(isDark);
 
-  const focused: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(thickBorder()).borderLeft(true).borderForeground(f("4", "12")),
-    title: newStyle().foreground(f("4", "12")),
-    description: newStyle().foreground(f("8", "7")),
-    errorIndicator: newStyle().foreground(f("1", "9")).setString(" *"),
-    errorMessage: newStyle().foreground(f("1", "9")),
-    selectSelector: newStyle().foreground(f("4", "12")).setString("> "),
-    nextIndicator: newStyle().foreground(f("4", "12")).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(f("4", "12")).setString("  \u2191 "),
-    option: newStyle().foreground(f("15", "0")),
-    multiSelectSelector: newStyle().foreground(f("4", "12")).setString("> "),
-    selectedOption: newStyle().foreground(f("2", "10")),
-    selectedPrefix: newStyle().foreground(f("2", "10")).setString("[\u2022] "),
-    unselectedOption: newStyle().foreground(f("15", "0")),
-    unselectedPrefix: newStyle().foreground(f("8", "7")).setString("[ ] "),
-    focusedButton: newStyle().foreground(f("15", "0")).background(f("4", "12")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(f("15", "0")).background(f("0", "15")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(f("4", "12")),
-      placeholder: newStyle().foreground(f("8", "7")),
-      prompt: newStyle().foreground(f("4", "12")),
-      text: newStyle().foreground(f("15", "0")),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(f("4", "12")),
-    file: newStyle(),
-  };
+  const f = t.focused;
+  f.base = f.base.borderForeground("8");
+  f.card = f.base;
+  f.title = f.title.foreground("6");
+  f.noteTitle = f.noteTitle.foreground("6");
+  f.directory = f.directory.foreground("6");
+  f.description = f.description.foreground("8");
+  f.errorIndicator = f.errorIndicator.foreground("9");
+  f.errorMessage = f.errorMessage.foreground("9");
+  f.selectSelector = f.selectSelector.foreground("3");
+  f.nextIndicator = f.nextIndicator.foreground("3");
+  f.prevIndicator = f.prevIndicator.foreground("3");
+  f.option = f.option.foreground("7");
+  f.multiSelectSelector = f.multiSelectSelector.foreground("3");
+  f.selectedOption = f.selectedOption.foreground("2");
+  f.selectedPrefix = f.selectedPrefix.foreground("2");
+  f.unselectedOption = f.unselectedOption.foreground("7");
+  f.focusedButton = f.focusedButton.foreground("7").background("5");
+  f.blurredButton = f.blurredButton.foreground("7").background("0");
 
-  const blurred: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(hiddenBorder()).borderLeft(true),
-    title: newStyle().foreground(f("8", "7")),
-    description: newStyle().foreground(f("8", "7")),
-    errorIndicator: newStyle().foreground(f("1", "9")).setString(" *"),
-    errorMessage: newStyle().foreground(f("1", "9")),
-    selectSelector: newStyle().foreground(f("8", "7")).setString("> "),
-    nextIndicator: newStyle().foreground(f("8", "7")).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(f("8", "7")).setString("  \u2191 "),
-    option: newStyle().foreground(f("8", "7")),
-    multiSelectSelector: newStyle().foreground(f("8", "7")).setString("> "),
-    selectedOption: newStyle().foreground(f("2", "10")),
-    selectedPrefix: newStyle().foreground(f("2", "10")).setString("[\u2022] "),
-    unselectedOption: newStyle().foreground(f("8", "7")),
-    unselectedPrefix: newStyle().foreground(f("8", "7")).setString("[ ] "),
-    focusedButton: newStyle().foreground(f("15", "0")).background(f("4", "12")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(f("15", "0")).background(f("0", "15")).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(f("4", "12")),
-      placeholder: newStyle().foreground(f("8", "7")),
-      prompt: newStyle().foreground(f("4", "12")),
-      text: newStyle().foreground(f("8", "7")),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(f("4", "12")),
-    file: newStyle(),
-  };
+  // Upstream calls TextInput.Cursor/Placeholder/Prompt.Foreground(...) here
+  // without assigning the result, so those are no-ops in Go: the base
+  // text-input styles are kept unchanged. Ported 1:1.
 
-  return {
-    form: { base: newStyle() },
-    group: {
-      base: newStyle(),
-      title: newStyle().foreground(f("4", "12")).bold(true),
-      description: newStyle().foreground(f("8", "7")),
-    },
-    fieldSeparator: newStyle().setString("\n"),
-    focused,
-    blurred,
-    help: {
-      ellipsis: newStyle().foreground(f("8", "7")),
-      shortKey: newStyle().foreground(f("8", "7")),
-      shortDesc: newStyle().foreground(f("8", "7")),
-      shortSeparator: newStyle().foreground(f("8", "7")),
-      fullKey: newStyle().foreground(f("8", "7")),
-      fullDesc: newStyle().foreground(f("8", "7")),
-      fullSeparator: newStyle().foreground(f("8", "7")),
-    },
-  };
+  t.blurred = copyFieldStyles(t.focused);
+  t.blurred.base = t.blurred.base.borderStyle(hiddenBorder());
+  t.blurred.card = t.blurred.base;
+  t.blurred.noteTitle = t.blurred.noteTitle.foreground("8");
+  t.blurred.title = t.blurred.noteTitle.foreground("8");
+
+  t.blurred.textInput.prompt = t.blurred.textInput.prompt.foreground("8");
+  t.blurred.textInput.text = t.blurred.textInput.text.foreground("7");
+
+  t.blurred.nextIndicator = newStyle();
+  t.blurred.prevIndicator = newStyle();
+
+  t.group.title = t.focused.title;
+  t.group.description = t.focused.description;
+  return t;
 }
 
 // ---------------------------------------------------------------------------
-// ThemeCatppuccin — uses Mocha (dark) / Latte (light) palettes
+// ThemeCatppuccin — Mocha (dark) / Latte (light), from catppuccin/go v0.3.0
 // ---------------------------------------------------------------------------
 
-// Catppuccin Mocha palette (dark)
 const mocha = {
   base: "#1e1e2e",
   text: "#cdd6f4",
@@ -488,7 +363,6 @@ const mocha = {
   rosewater: "#f5e0dc",
 };
 
-// Catppuccin Latte palette (light)
 const latte = {
   base: "#eff1f5",
   text: "#4c4f69",
@@ -503,85 +377,53 @@ const latte = {
   rosewater: "#dc8a78",
 };
 
+/** ThemeCatppuccin returns a new theme based on the Catppuccin color scheme. */
 export function ThemeCatppuccin(isDark: boolean): Styles {
+  const t = ThemeBase(isDark);
   const p = isDark ? mocha : latte;
+  const cursor = p.rosewater;
 
-  const focused: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(thickBorder()).borderLeft(true).borderForeground(p.pink),
-    title: newStyle().foreground(p.pink),
-    description: newStyle().foreground(p.overlay1),
-    errorIndicator: newStyle().foreground(p.red).setString(" *"),
-    errorMessage: newStyle().foreground(p.red),
-    selectSelector: newStyle().foreground(p.pink).setString("> "),
-    nextIndicator: newStyle().foreground(p.pink).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(p.pink).setString("  \u2191 "),
-    option: newStyle().foreground(p.text),
-    multiSelectSelector: newStyle().foreground(p.pink).setString("> "),
-    selectedOption: newStyle().foreground(p.green),
-    selectedPrefix: newStyle().foreground(p.green).setString("[\u2022] "),
-    unselectedOption: newStyle().foreground(p.text),
-    unselectedPrefix: newStyle().foreground(p.overlay1).setString("[ ] "),
-    focusedButton: newStyle().foreground(p.base).background(p.pink).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(p.text).background(p.base).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(p.pink),
-      placeholder: newStyle().foreground(p.overlay0),
-      prompt: newStyle().foreground(p.pink),
-      text: newStyle().foreground(p.text),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(p.mauve),
-    file: newStyle(),
+  const f = t.focused;
+  f.base = f.base.borderForeground(p.subtext1);
+  f.card = f.base;
+  f.title = f.title.foreground(p.mauve);
+  f.noteTitle = f.noteTitle.foreground(p.mauve);
+  f.directory = f.directory.foreground(p.mauve);
+  f.description = f.description.foreground(p.subtext0);
+  f.errorIndicator = f.errorIndicator.foreground(p.red);
+  f.errorMessage = f.errorMessage.foreground(p.red);
+  f.selectSelector = f.selectSelector.foreground(p.pink);
+  f.nextIndicator = f.nextIndicator.foreground(p.pink);
+  f.prevIndicator = f.prevIndicator.foreground(p.pink);
+  f.option = f.option.foreground(p.text);
+  f.multiSelectSelector = f.multiSelectSelector.foreground(p.pink);
+  f.selectedOption = f.selectedOption.foreground(p.green);
+  f.selectedPrefix = f.selectedPrefix.foreground(p.green);
+  f.unselectedPrefix = f.unselectedPrefix.foreground(p.text);
+  f.unselectedOption = f.unselectedOption.foreground(p.text);
+  f.focusedButton = f.focusedButton.foreground(p.base).background(p.pink);
+  f.blurredButton = f.blurredButton.foreground(p.text).background(p.base);
+
+  f.textInput.cursor = f.textInput.cursor.foreground(cursor);
+  f.textInput.placeholder = f.textInput.placeholder.foreground(p.overlay0);
+  f.textInput.prompt = f.textInput.prompt.foreground(p.pink);
+
+  t.blurred = copyFieldStyles(t.focused);
+  t.blurred.base = t.blurred.base.borderStyle(hiddenBorder());
+  t.blurred.card = t.blurred.base;
+
+  t.help = {
+    ...t.help,
+    ellipsis: t.help.ellipsis.foreground(p.subtext0),
+    shortKey: t.help.shortKey.foreground(p.subtext0),
+    shortDesc: t.help.shortDesc.foreground(p.overlay1),
+    shortSeparator: t.help.shortSeparator.foreground(p.subtext0),
+    fullKey: t.help.fullKey.foreground(p.subtext0),
+    fullDesc: t.help.fullDesc.foreground(p.overlay1),
+    fullSeparator: t.help.fullSeparator.foreground(p.subtext0),
   };
 
-  const blurred: FieldStyles = {
-    base: newStyle().paddingLeft(1).borderStyle(hiddenBorder()).borderLeft(true),
-    title: newStyle().foreground(p.subtext0),
-    description: newStyle().foreground(p.overlay0),
-    errorIndicator: newStyle().foreground(p.red).setString(" *"),
-    errorMessage: newStyle().foreground(p.red),
-    selectSelector: newStyle().foreground(p.overlay0).setString("> "),
-    nextIndicator: newStyle().foreground(p.overlay0).setString("  \u2193 "),
-    prevIndicator: newStyle().foreground(p.overlay0).setString("  \u2191 "),
-    option: newStyle().foreground(p.overlay1),
-    multiSelectSelector: newStyle().foreground(p.overlay0).setString("> "),
-    selectedOption: newStyle().foreground(p.green),
-    selectedPrefix: newStyle().foreground(p.green).setString("[\u2022] "),
-    unselectedOption: newStyle().foreground(p.overlay1),
-    unselectedPrefix: newStyle().foreground(p.overlay0).setString("[ ] "),
-    focusedButton: newStyle().foreground(p.base).background(p.pink).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    blurredButton: newStyle().foreground(p.text).background(p.base).padding(buttonPaddingVertical, buttonPaddingHorizontal),
-    textInput: {
-      cursor: newStyle().foreground(p.pink),
-      placeholder: newStyle().foreground(p.overlay0),
-      prompt: newStyle().foreground(p.pink),
-      text: newStyle().foreground(p.overlay0),
-    },
-    card: newStyle().paddingLeft(1),
-    noneStyle: newStyle(),
-    directory: newStyle().foreground(p.mauve),
-    file: newStyle(),
-  };
-
-  return {
-    form: { base: newStyle() },
-    group: {
-      base: newStyle(),
-      title: newStyle().foreground(p.pink).bold(true),
-      description: newStyle().foreground(p.overlay1),
-    },
-    fieldSeparator: newStyle().setString("\n"),
-    focused,
-    blurred,
-    help: {
-      ellipsis: newStyle().foreground(p.overlay0),
-      shortKey: newStyle().foreground(p.overlay0),
-      shortDesc: newStyle().foreground(p.overlay0),
-      shortSeparator: newStyle().foreground(p.overlay0),
-      fullKey: newStyle().foreground(p.overlay0),
-      fullDesc: newStyle().foreground(p.overlay0),
-      fullSeparator: newStyle().foreground(p.overlay0),
-    },
-  };
+  t.group.title = t.focused.title;
+  t.group.description = t.focused.description;
+  return t;
 }

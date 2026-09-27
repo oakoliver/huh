@@ -52,7 +52,7 @@ export class FilePicker implements Field {
     this._width = 0;
     this._height = 0;
     this._theme = ThemeFunc(ThemeCharm);
-    this._hasDarkBg = true;
+    this._hasDarkBg = false;
     this._keymap = NewDefaultKeyMap().filePicker;
     this._allowedTypes = [];
     this._currentDirectory = ".";
@@ -133,6 +133,9 @@ export class FilePicker implements Field {
   init(): Cmd { return null; }
 
   update(msg: Msg): [this, Cmd] {
+    if ((msg as any)?._tag === "BackgroundColorMsg") {
+      this._hasDarkBg = (msg as any).isDark();
+    }
     if ((msg as any)?._tag === "KeyPressMsg") {
       const km = msg as KeyPressMsg;
 

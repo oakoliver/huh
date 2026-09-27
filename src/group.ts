@@ -82,7 +82,13 @@ export class Group implements LayoutGroup {
     this.viewport = newViewport();
     // Propagate default width to viewport, help, and all fields
     this.withWidth(this._width);
-    this._height = this.rawHeight();
+    // Upstream computes the initial height before the form hands its keymap
+    // to the fields. Go fields start with zero-value (disabled) keymaps, so
+    // the footer (help) is empty at this point and does not count towards
+    // the height. Our fields start with the default keymap, so leave the
+    // footer out explicitly to get the same height.
+    const hdr = this.header();
+    this._height = lipglossHeight(this.content()) + (hdr ? lipglossHeight(hdr) : 0);
     this.viewport.setHeight(this._height);
   }
 
@@ -370,7 +376,8 @@ export class Group implements LayoutGroup {
     return h;
   }
 
-  private rawHeight(): number {
+  /** Height of the header, content and footer (used to size the form). @internal */
+  rawHeight(): number {
     return lipglossHeight(this.content()) + this.titleFooterHeight();
   }
 

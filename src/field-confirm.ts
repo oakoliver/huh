@@ -5,7 +5,7 @@
 
 import { type Binding, matches } from "@oakoliver/bubbles";
 import { type Cmd, type Msg, Batch } from "@oakoliver/bubbletea";
-import { placeHorizontal, Left, type Position } from "@oakoliver/lipgloss";
+import { joinHorizontal, newStyle, stringWidth, Left, type Position } from "@oakoliver/lipgloss";
 
 import { type Accessor, EmbeddedAccessor, PointerAccessor } from "./accessor.js";
 import {
@@ -19,6 +19,12 @@ import {
   nextID, type FieldPosition, isFirst, isLast, NextField, PrevField,
 } from "./field-input.js";
 import type { Field } from "./field-input.js";
+import { wrap } from "./wrap.js";
+
+/** lipgloss.Width: widest line of a (possibly multi-line) string. */
+function lipglossWidth(s: string): number {
+  return Math.max(0, ...s.split("\n").map((l) => stringWidth(l)));
+}
 
 export class Confirm implements Field {
   private _accessor: Accessor<boolean>;
@@ -52,7 +58,7 @@ export class Confirm implements Field {
     this._err = null;
     this._width = 0;
     this._theme = { theme: (isDark) => ThemeCharm(isDark) };
-    this._hasDarkBg = true;
+    this._hasDarkBg = false;
     this._keymap = NewDefaultKeyMap().confirm;
     this._inline = false;
   }
@@ -94,7 +100,7 @@ export class Confirm implements Field {
 
   keyBinds(): Binding[] {
     const km = this._keymap;
-    return [km.toggle, km.accept, km.reject, km.next, km.prev, km.submit];
+    return [km.toggle, km.prev, km.submit, km.next, km.accept, km.reject];
   }
 
   focus(): Cmd {
@@ -111,6 +117,9 @@ export class Confirm implements Field {
   init(): Cmd { return null; }
 
   update(msg: Msg): [Confirm, Cmd] {
+    if ((msg as any)?._tag === "BackgroundColorMsg") {
+      this._hasDarkBg = (msg as any).isDark();
+    }
     if (isUpdateFieldMsg(msg)) {
       const cmds: Cmd[] = [];
       let [should, hash] = this._title.shouldUpdate();
@@ -169,43 +178,54 @@ export class Confirm implements Field {
 
   view(): string {
     const styles = this.activeStyles();
-    const val = this._accessor.get();
+    const maxWidth = this._width - styles.base.getHorizontalFrameSize();
 
-    const yesBtn = val
-      ? styles.focusedButton.render(this._affirmative)
-      : styles.blurredButton.render(this._affirmative);
-    const noBtn = val
-      ? styles.blurredButton.render(this._negative)
-      : styles.focusedButton.render(this._negative);
-    const buttons = yesBtn + "  " + noBtn;
+    let wroteHeader = false;
+    let sb = "";
+    if (this._title.val) {
+      sb += styles.title.render(maxWidth > 0 ? wrap(this._title.val, maxWidth) : this._title.val);
+      wroteHeader = true;
+    }
+    if (this._err) {
+      sb += styles.errorIndicator.render();
+      wroteHeader = true;
+    }
+    if (this._description.val) {
+      const description = styles.description.render(
+        maxWidth > 0 ? wrap(this._description.val, maxWidth) : this._description.val,
+      );
+      if (!this._inline) sb += "\n";
+      sb += description;
+      wroteHeader = true;
+    }
+    if (!this._inline && wroteHeader) {
+      sb += "\n\n";
+    }
 
-    const errInd = this._err ? styles.errorIndicator.render() : "";
-    const titleStr = this._title.val
-      ? styles.title.render(this._title.val) + errInd
-      : "";
-    const descStr = this._description.val
-      ? styles.description.render(this._description.val)
-      : "";
-
-    let content: string;
-    if (this._inline) {
-      content = titleStr ? titleStr + " " + buttons : buttons;
+    let affirmative: string;
+    let negative = "";
+    if (this._negative !== "") {
+      if (this._accessor.get()) {
+        affirmative = styles.focusedButton.render(this._affirmative);
+        negative = styles.blurredButton.render(this._negative);
+      } else {
+        affirmative = styles.blurredButton.render(this._affirmative);
+        negative = styles.focusedButton.render(this._negative);
+      }
+      this._keymap.reject.setHelp("n", this._negative);
     } else {
-      const parts: string[] = [];
-      if (titleStr) parts.push(titleStr);
-      if (descStr) parts.push(descStr);
-      parts.push(buttons);
-      content = parts.join("\n");
+      affirmative = styles.focusedButton.render(this._affirmative);
+      this._keymap.reject.setEnabled(false);
     }
+    this._keymap.accept.setHelp("y", this._affirmative);
 
-    if (!this._inline && this._width > 0) {
-      const lines = content.split("\n");
-      const last = lines.length - 1;
-      lines[last] = placeHorizontal(this._width, this._buttonAlignment, lines[last]);
-      content = lines.join("\n");
-    }
+    const buttonsRow = joinHorizontal(this._buttonAlignment, affirmative, negative);
+    const promptWidth = lipglossWidth(sb);
+    const buttonsWidth = lipglossWidth(buttonsRow);
+    const renderWidth = Math.max(buttonsWidth, promptWidth);
+    sb += newStyle().width(renderWidth).align(this._buttonAlignment).render(buttonsRow);
 
-    return styles.base.width(this._width).render(content);
+    return styles.base.width(this._width).render(sb);
   }
 
   // -- With* interface methods --

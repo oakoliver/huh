@@ -52,7 +52,7 @@ export class Text implements Field {
     this._err = null;
     this._width = 0;
     this._theme = { theme: (isDark) => ThemeCharm(isDark) };
-    this._hasDarkBg = true;
+    this._hasDarkBg = false;
     this._keymap = NewDefaultKeyMap().text;
     this._editorEnabled = true;
     // Map newLine keys to textarea's insertNewline keymap
@@ -150,6 +150,9 @@ export class Text implements Field {
   init(): Cmd { return null; }
 
   update(msg: Msg): [Text, Cmd] {
+    if ((msg as any)?._tag === "BackgroundColorMsg") {
+      this._hasDarkBg = (msg as any).isDark();
+    }
     const cmds: Cmd[] = [];
 
     if (isUpdateFieldMsg(msg)) {
@@ -231,13 +234,15 @@ export class Text implements Field {
     const styles = this.activeStyles();
     const ti = styles.textInput;
 
-    const cursorColor = ti.cursor.getForeground();
+    // Upstream reads the cursor colour from the style's background (usually unset).
+    const cursorColor = ti.cursor.getBackground();
     const existing = this._textarea.getStyles();
-    const stateOverrides = { placeholder: ti.placeholder, text: ti.text, prompt: ti.prompt };
+    const stateOverrides = { placeholder: ti.placeholder, text: ti.text, prompt: ti.prompt, cursorLine: ti.text };
     this._textarea.setStyles({
-      focused: { ...existing.focused, ...stateOverrides },
-      blurred: { ...existing.blurred, ...stateOverrides },
-      cursor: { ...existing.cursor, color: typeof cursorColor === "string" ? cursorColor : existing.cursor.color },
+      ...existing,
+      focused: this._focused ? { ...existing.focused, ...stateOverrides } : existing.focused,
+      blurred: this._focused ? existing.blurred : { ...existing.blurred, ...stateOverrides },
+      cursor: { ...existing.cursor, color: typeof cursorColor === "string" ? cursorColor : "" },
     });
 
     const parts: string[] = [];
@@ -269,7 +274,7 @@ export class Text implements Field {
 
   withWidth(width: number): Field {
     this._width = width;
-    this._textarea.setWidth(width);
+    this._textarea.setWidth(width - this.activeStyles().base.getHorizontalFrameSize());
     return this;
   }
 

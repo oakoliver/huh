@@ -27,12 +27,12 @@ npm install @oakoliver/huh
 ```typescript
 import {
   NewForm, NewGroup, NewInput, NewSelect, NewConfirm,
-  NewOption, Run, ThemeCharm,
+  NewOption, ThemeFunc, ThemeCharm,
 } from '@oakoliver/huh';
 
-const name = { value: '' };
-const color = { value: '' };
-const confirm = { value: false };
+let name = '';
+let color = '';
+let confirm = false;
 
 const form = NewForm(
   NewGroup(
@@ -40,7 +40,7 @@ const form = NewForm(
       .title('Name')
       .description('What is your name?')
       .placeholder('John Doe')
-      .value(name),
+      .value(() => name, (v) => { name = v; }),
 
     NewSelect<string>()
       .title('Favorite Color')
@@ -49,20 +49,25 @@ const form = NewForm(
         NewOption('Blue', 'blue'),
         NewOption('Green', 'green'),
       ])
-      .value(color),
+      .value(() => color, (v) => { color = v; }),
 
     NewConfirm()
       .title('Are you sure?')
       .affirmative('Yes')
       .negative('No')
-      .value(confirm),
+      .value(() => confirm, (v) => { confirm = v; }),
   ),
-).theme(ThemeCharm());
+).withTheme(ThemeFunc(ThemeCharm));
 
-await Run(form);
+await form.run();
 
-console.log(`Hello ${name.value}, you like ${color.value}!`);
+console.log(`Hello ${name}, you like ${color}!`);
 ```
+
+Every field binds to your data with `.value(getter, setter)`: the getter
+supplies the initial value and the setter receives every change.
+
+`form.run()` throws `ErrUserAborted` when the user presses `Ctrl+C`.
 
 ## Fields
 
@@ -73,15 +78,15 @@ Single-line text input with placeholder, character limit, and validation.
 ```typescript
 import { NewInput, ValidateNotEmpty } from '@oakoliver/huh';
 
-const email = { value: '' };
+let email = '';
 
 NewInput()
   .title('Email')
   .description('Enter your email address')
   .placeholder('user@example.com')
   .charLimit(100)
-  .validate(ValidateNotEmpty('email is required'))
-  .value(email);
+  .validate(ValidateNotEmpty())
+  .value(() => email, (v) => { email = v; });
 ```
 
 ### Text
@@ -91,7 +96,7 @@ Multi-line text area with character limit and configurable height.
 ```typescript
 import { NewText, ValidateMaxLength } from '@oakoliver/huh';
 
-const bio = { value: '' };
+let bio = '';
 
 NewText()
   .title('Bio')
@@ -100,17 +105,17 @@ NewText()
   .charLimit(500)
   .lines(5)
   .validate(ValidateMaxLength(500))
-  .value(bio);
+  .value(() => bio, (v) => { bio = v; });
 ```
 
 ### Select
 
-Single-choice selection with scrollable viewport and optional filtering.
+Single-choice selection with a scrollable viewport. Press `/` to filter.
 
 ```typescript
-import { NewSelect, NewOption } from '@oakoliver/huh';
+import { NewSelect, NewOption, NewOptions } from '@oakoliver/huh';
 
-const lang = { value: '' };
+let lang = '';
 
 NewSelect<string>()
   .title('Language')
@@ -122,8 +127,15 @@ NewSelect<string>()
     NewOption('Python', 'py'),
   ])
   .height(5)
-  .filtering(true)
-  .value(lang);
+  .value(() => lang, (v) => { lang = v; });
+
+// NewOptions builds options whose key and value are the same.
+let size = '';
+NewSelect<string>()
+  .title('Size')
+  .options(NewOptions('S', 'M', 'L'))
+  .inline(true)
+  .value(() => size, (v) => { size = v; });
 ```
 
 ### MultiSelect
@@ -133,20 +145,21 @@ Multiple-choice selection with optional limit and filtering.
 ```typescript
 import { NewMultiSelect, NewOption } from '@oakoliver/huh';
 
-const tools = { value: [] as string[] };
+let tools: string[] = [];
 
 NewMultiSelect<string>()
   .title('Tools')
   .description('Select your tools (max 3)')
   .options([
-    NewOption('VS Code', 'vscode'),
+    NewOption('VS Code', 'vscode').setSelected(true),
     NewOption('Vim', 'vim'),
     NewOption('Emacs', 'emacs'),
     NewOption('Helix', 'helix'),
   ])
   .limit(3)
   .height(6)
-  .value(tools);
+  .filterable(true)
+  .value(() => tools, (v) => { tools = v; });
 ```
 
 ### Confirm
@@ -156,59 +169,66 @@ Yes/no confirmation prompt.
 ```typescript
 import { NewConfirm } from '@oakoliver/huh';
 
-const proceed = { value: false };
+let proceed = false;
 
 NewConfirm()
   .title('Continue?')
   .description('This will overwrite existing files')
   .affirmative('Yes')
   .negative('No')
-  .value(proceed);
+  .value(() => proceed, (v) => { proceed = v; });
 ```
 
 ### Note
 
-Read-only informational panel with optional title and height.
+Read-only informational panel. Descriptions support `_italic_`, `*bold*`
+and `` `code` ``.
 
 ```typescript
 import { NewNote } from '@oakoliver/huh';
 
 NewNote()
   .title('Welcome')
-  .description('This wizard will help you set up your project.\nPress Enter to continue.');
+  .description('This wizard will help you set up your *project*.\nPress Enter to continue.')
+  .next(true)
+  .nextLabel('Start');
 ```
 
 ### FilePicker
 
-File system browser with extension filtering and directory toggle.
+File system browser with extension filtering.
 
 ```typescript
 import { NewFilePicker } from '@oakoliver/huh';
 
-const file = { value: '' };
+let file = '';
 
 NewFilePicker()
   .title('Config File')
   .description('Select a configuration file')
+  .currentDirectory('.')
   .allowedTypes(['.json', '.yaml', '.toml'])
-  .showHidden(false)
-  .showDirectories(true)
   .height(10)
-  .value(file);
+  .value(() => file, (v) => { file = v; });
 ```
 
 ## Forms and Groups
 
-Compose fields into multi-step forms using Groups:
+Compose fields into multi-step forms using Groups. Each group is one page;
+`Enter` on the last field of a group moves to the next group.
 
 ```typescript
 import { NewForm, NewGroup, NewInput, NewSelect, NewOption } from '@oakoliver/huh';
 
+let name = '';
+let email = '';
+let plan = 'free';
+
 const form = NewForm(
   // Step 1
   NewGroup(
-    NewInput().title('Name').value(name),
-    NewInput().title('Email').value(email),
+    NewInput().title('Name').value(() => name, (v) => { name = v; }),
+    NewInput().title('Email').value(() => email, (v) => { email = v; }),
   ).title('Personal Info'),
 
   // Step 2
@@ -216,70 +236,107 @@ const form = NewForm(
     NewSelect<string>()
       .title('Plan')
       .options([NewOption('Free', 'free'), NewOption('Pro', 'pro')])
-      .value(plan),
+      .value(() => plan, (v) => { plan = v; }),
   ).title('Subscription'),
 );
+
+await form.run();
+```
+
+To prompt for a single field without building a form, use `Run`:
+
+```typescript
+import { NewInput, Run } from '@oakoliver/huh';
+
+let name = '';
+await Run(NewInput().title('Name').value(() => name, (v) => { name = v; }));
 ```
 
 ## Themes
 
+Themes match upstream huh's `theme.go`: Charm (the default), Base, Dracula,
+Base16 and Catppuccin. Each theme has light and dark variants and picks one
+from the terminal's reported background colour.
+
 ```typescript
 import {
-  ThemeCharm, ThemeBase, ThemeDracula,
-  ThemeBase16, ThemeCatppuccin, ThemeFunc,
+  NewForm, NewGroup, NewInput,
+  ThemeDracula, ThemeBase, ThemeFunc, type Styles,
 } from '@oakoliver/huh';
 
-// Use a built-in theme
-const form = NewForm(...groups).theme(ThemeCharm());
+let name = '';
+const group = NewGroup(NewInput().title('Name').value(() => name, (v) => { name = v; }));
 
-// Use a custom theme function
-const form = NewForm(...groups).theme(ThemeFunc(myCustomTheme));
+// Use a built-in theme
+const form = NewForm(group).withTheme(ThemeFunc(ThemeDracula));
+
+// Build your own theme on top of ThemeBase
+function myTheme(isDark: boolean): Styles {
+  const t = ThemeBase(isDark);
+  t.focused.title = t.focused.title.foreground(isDark ? '#FFD700' : '#8B6F00').bold(true);
+  t.group.title = t.focused.title;
+  return t;
+}
+const custom = NewForm(group).withTheme(ThemeFunc(myTheme));
 ```
 
 ## Dynamic Fields with Eval
 
-Update field properties at runtime based on form state:
+Update field properties at runtime based on form state. The `*Func`
+variants take a function and a *bindings* value; the function is re-run
+whenever the bindings change.
 
 ```typescript
-import { NewInput, NewSelect, NewOption, Eval } from '@oakoliver/huh';
+import { NewForm, NewGroup, NewSelect, NewOption } from '@oakoliver/huh';
 
-const role = { value: '' };
-const dept = { value: '' };
+const state = { role: 'engineer', dept: '' };
 
-NewSelect<string>()
-  .title('Department')
-  .optionsFunc(
-    () => role.value === 'engineer'
-      ? [NewOption('Backend', 'be'), NewOption('Frontend', 'fe')]
-      : [NewOption('Sales', 'sales'), NewOption('Marketing', 'mkt')],
-    role,
-  )
-  .value(dept);
+NewForm(
+  NewGroup(
+    NewSelect<string>()
+      .title('Role')
+      .options([NewOption('Engineer', 'engineer'), NewOption('Sales', 'sales')])
+      .value(() => state.role, (v) => { state.role = v; }),
+
+    NewSelect<string>()
+      .titleFunc(() => `Department for ${state.role}`, state)
+      .optionsFunc(
+        () => state.role === 'engineer'
+          ? [NewOption('Backend', 'be'), NewOption('Frontend', 'fe')]
+          : [NewOption('Sales', 'sales'), NewOption('Marketing', 'mkt')],
+        state,
+      )
+      .value(() => state.dept, (v) => { state.dept = v; }),
+  ),
+);
 ```
 
 ## Validation
 
+Validators return an `Error` to reject the value, or `null` to accept it.
+
 ```typescript
-import { ValidateNotEmpty, ValidateMinLength, ValidateMaxLength, ValidateLength } from '@oakoliver/huh';
+import { NewInput, ValidateNotEmpty, ValidateMinLength } from '@oakoliver/huh';
+
+let username = '';
+let password = '';
+let email = '';
 
 NewInput()
   .title('Username')
-  .validate(ValidateNotEmpty('username is required'))
-  .value(username);
+  .validate(ValidateNotEmpty())
+  .value(() => username, (v) => { username = v; });
 
 NewInput()
   .title('Password')
   .validate(ValidateMinLength(8))
-  .value(password);
+  .value(() => password, (v) => { password = v; });
 
 // Custom validation
 NewInput()
   .title('Email')
-  .validate((s: string) => {
-    if (!s.includes('@')) return 'must be a valid email';
-    return null;
-  })
-  .value(email);
+  .validate((s: string) => (s.includes('@') ? null : new Error('must be a valid email')))
+  .value(() => email, (v) => { email = v; });
 ```
 
 ## Keyboard Navigation
@@ -289,9 +346,9 @@ NewInput()
 | `Enter` | Submit field / Next group |
 | `Shift+Tab` | Previous field |
 | `Tab` | Next field |
-| `Esc` | Abort form |
+| `Ctrl+C` | Abort form (`form.run()` throws `ErrUserAborted`) |
 | `Up/Down` | Navigate options (Select/MultiSelect) |
-| `Space` | Toggle selection (MultiSelect) |
+| `Space` / `x` | Toggle selection (MultiSelect) |
 | `/` | Start filtering (Select/MultiSelect) |
 | `Ctrl+A` | Toggle all (MultiSelect) |
 
