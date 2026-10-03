@@ -12,7 +12,7 @@ import { stripAnsi } from "@oakoliver/lipgloss";
 import {
   NewForm, NewGroup, NewSelect, NewMultiSelect, NewInput, NewText,
   NewConfirm, NewNote, NewFilePicker, NewOption, NewOptions,
-  FormState, NextField, PrevField,
+  FormState, NextField, PrevField, ErrUserAborted,
   nextGroup, prevGroup,
   type Form, type Field,
 } from "../src/index.js";
@@ -472,5 +472,18 @@ describe("Form window sizing", () => {
       heights.push(f.view().split("\n").length);
     }
     expect(new Set(heights).size).toBe(1);
+  });
+});
+
+describe("Form.run errors", () => {
+  test("Ctrl+C rejects with ErrUserAborted, as upstream", async () => {
+    const { PassThrough } = await import("node:stream");
+    const input = new PassThrough();
+    const output = new PassThrough();
+    output.resume();
+    const form = NewForm(NewGroup(NewInput().title("Name"))).withInput(input).withOutput(output);
+    const running = form.run();
+    setTimeout(() => input.write("\x03"), 50);
+    await expect(running).rejects.toBeInstanceOf(ErrUserAborted);
   });
 });
