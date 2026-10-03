@@ -7,7 +7,7 @@
  *        from huh_test.go
  */
 import { describe, test, expect } from "bun:test";
-import { KeyCode, KeyMod, KeyPressMsg } from "@oakoliver/bubbletea";
+import { KeyCode, KeyMod, KeyPressMsg, WindowSizeMsg } from "@oakoliver/bubbletea";
 import { stripAnsi } from "@oakoliver/lipgloss";
 import {
   NewForm, NewGroup, NewSelect, NewMultiSelect, NewInput, NewText,
@@ -449,5 +449,28 @@ describe("Form", () => {
     expect(stripAnsi(f.view())).toContain("Bar");
     expect(f.State).toBe(FormState.Normal);
     expect(f.selector.index()).toBe(1);
+  });
+});
+
+describe("Form window sizing", () => {
+  test("repeated WindowSizeMsg does not grow the form", () => {
+    let lang = "";
+    let ok = false;
+    const f = NewForm(
+      NewGroup(
+        NewSelect<string>()
+          .title("Language")
+          .options([NewOption("TypeScript", "ts"), NewOption("Go", "go"), NewOption("Rust", "rust")])
+          .value(() => lang, (v) => { lang = v; }),
+        NewConfirm().title("Ship it?").value(() => ok, (v) => { ok = v; }),
+      ),
+    );
+    f.init();
+    const heights: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      f.update(new WindowSizeMsg(80, 40));
+      heights.push(f.view().split("\n").length);
+    }
+    expect(new Set(heights).size).toBe(1);
   });
 });
