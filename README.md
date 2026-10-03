@@ -2,6 +2,10 @@
 
 Interactive terminal forms and prompts for TypeScript. A pure TypeScript port of [charmbracelet/huh](https://github.com/charmbracelet/huh) with zero external dependencies.
 
+![A multi-step huh form: picking a burger from a Select, toggling toppings in a MultiSelect, typing a name and special instructions, and confirming a discount](https://raw.githubusercontent.com/oakoliver/huh/main/assets/burger.gif)
+
+<sub>Recorded with [@oakoliver/vhs](https://github.com/oakoliver/vhs) from [`examples/burger.ts`](https://github.com/oakoliver/huh/blob/main/examples/burger.ts); tapes live in [`assets/tapes`](https://github.com/oakoliver/huh/tree/main/assets/tapes).</sub>
+
 **Upstream parity:** huh [v2.0.3](https://github.com/charmbracelet/huh/releases/tag/v2.0.3) + `main` @ [`ffb6a97`](https://github.com/charmbracelet/huh/commit/ffb6a97) (includes the post-release fixes #804 and #808). See [CHANGELOG.md](./CHANGELOG.md).
 
 Built on top of [@oakoliver/bubbletea](https://www.npmjs.com/package/@oakoliver/bubbletea), [@oakoliver/bubbles](https://www.npmjs.com/package/@oakoliver/bubbles), and [@oakoliver/lipgloss](https://www.npmjs.com/package/@oakoliver/lipgloss).
@@ -112,6 +116,8 @@ NewText()
 
 Single-choice selection with a scrollable viewport. Press `/` to filter.
 
+![A Select scrolling through programming languages, then filtering with / down to Gleam](https://raw.githubusercontent.com/oakoliver/huh/main/assets/filter.gif)
+
 ```typescript
 import { NewSelect, NewOption, NewOptions } from '@oakoliver/huh';
 
@@ -217,6 +223,8 @@ NewFilePicker()
 Compose fields into multi-step forms using Groups. Each group is one page;
 `Enter` on the last field of a group moves to the next group.
 
+The form at the top of this README is two groups: see [`examples/burger.ts`](https://github.com/oakoliver/huh/blob/main/examples/burger.ts).
+
 ```typescript
 import { NewForm, NewGroup, NewInput, NewSelect, NewOption } from '@oakoliver/huh';
 
@@ -253,6 +261,8 @@ await Run(NewInput().title('Name').value(() => name, (v) => { name = v; }));
 ```
 
 ## Themes
+
+![The same Select and Confirm rendered in the Charm, Dracula, Catppuccin, Base16 and Base themes](https://raw.githubusercontent.com/oakoliver/huh/main/assets/themes.png)
 
 Themes match upstream huh's `theme.go`: Charm (the default), Base, Dracula,
 Base16 and Catppuccin. Each theme has light and dark variants and picks one
@@ -312,6 +322,8 @@ NewForm(
 ```
 
 ## Validation
+
+![An email input rejecting a value without @, and a password input rejecting a value shorter than 8 characters, before the form submits](https://raw.githubusercontent.com/oakoliver/huh/main/assets/validation.gif)
 
 Validators return an `Error` to reject the value, or `null` to accept it.
 

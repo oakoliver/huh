@@ -1,8 +1,20 @@
 # Examples
 
-Two small programs that exercise the form fields end to end, with made-up
-data. Both import huh from `../src`, so they always run the code in this
-checkout.
+Small programs that exercise the form fields end to end, with made-up data.
+They import huh from `../src`, so they always run the code in this checkout.
+
+## README recordings
+
+The pictures in the README are recorded from these with
+[@oakoliver/vhs](https://github.com/oakoliver/vhs); the tapes are in
+`assets/tapes/`.
+
+```sh
+bun examples/burger.ts       # two-group order form: Select, MultiSelect, Input, Text, Confirm
+bun examples/filter.ts       # a Select you scroll, then filter with /
+bun examples/validation.ts   # Input validators rejecting values before submit
+bun examples/themes.ts       # one form rendered in every built-in theme
+```
 
 ## publish-form.ts
 
