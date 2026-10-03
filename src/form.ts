@@ -16,6 +16,8 @@ import {
   RequestWindowSize,
   type ProgramOption,
   Program,
+  ErrInterrupted,
+  ErrProgramKilled,
   WithOutput,
   WithInput,
   WithAltScreen,
@@ -515,7 +517,16 @@ export class Form implements LayoutForm {
 
   private async runTea(): Promise<void> {
     const p = new Program(this, ...this.teaOptions);
-    const model = await p.run();
+    let model;
+    try {
+      model = await p.run();
+    } catch (err) {
+      // As upstream: an interrupted program (Ctrl+C) is a user abort and a
+      // killed one is a timeout.
+      if (err === ErrInterrupted) throw new ErrUserAborted();
+      if (err === ErrProgramKilled) throw new ErrTimeout();
+      throw err;
+    }
     const f = model as Form;
     if (f.aborted) {
       throw new ErrUserAborted();
