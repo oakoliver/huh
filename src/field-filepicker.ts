@@ -18,6 +18,7 @@ import {
   PrevField,
 } from "./field-input.js";
 import type { Field } from "./field-input.js";
+import { Run } from "./run.js";
 
 export class FilePicker implements Field {
   private _accessor: Accessor<string>;
@@ -228,7 +229,8 @@ export class FilePicker implements Field {
 
   // -- Run methods (stubs) --
 
-  async run(): Promise<void> { return Promise.reject(new Error("not implemented")); }
+  /** Runs this field on its own, as upstream `Run(field)`. */
+  async run(): Promise<void> { return Run(this); }
   async runAccessible(_w: any, _r: any): Promise<void> { return Promise.reject(new Error("not implemented")); }
 }
 

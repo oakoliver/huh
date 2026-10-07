@@ -17,6 +17,7 @@ import { type Theme, type FieldStyles, ThemeCharm } from "./theme.js";
 import { wrap } from "./wrap.js";
 import { nextID, type FieldPosition, isFirst, isLast, NextField, PrevField } from "./field-input.js";
 import type { Field } from "./field-input.js";
+import { Run } from "./run.js";
 
 const minHeight = 1;
 const defaultHeight = 10;
@@ -441,7 +442,8 @@ export class Select<T> implements Field {
 
   // -- Run stubs --
 
-  async run(): Promise<void> { throw new Error("not implemented"); }
+  /** Runs this field on its own, as upstream `Run(field)`. */
+  async run(): Promise<void> { return Run(this); }
   async runAccessible(_w: any, _r: any): Promise<void> { throw new Error("not implemented"); }
 
   // -- Internal helpers --

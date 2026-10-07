@@ -30,6 +30,7 @@ import type { Field } from "./field-input.js";
 import { type Cmd, type Msg, Batch, type KeyPressMsg } from "@oakoliver/bubbletea";
 import { type Binding, matches } from "@oakoliver/bubbles";
 import { newStyle } from "@oakoliver/lipgloss";
+import { Run } from "./run.js";
 
 // ---------------------------------------------------------------------------
 // Basic markdown rendering
@@ -283,7 +284,8 @@ export class Note implements Field {
 
   // -- Run methods (stubs) --
 
-  async run(): Promise<void> { throw new Error("not implemented"); }
+  /** Runs this field on its own, as upstream `Run(field)`. */
+  async run(): Promise<void> { return Run(this); }
   async runAccessible(_w: any, _r: any): Promise<void> { throw new Error("not implemented"); }
 }
 

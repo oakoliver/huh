@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.2 — field.run()
+
+### Fixed
+
+- **`field.run()` works.** `run()` on Input, Text, Select, MultiSelect, Confirm, Note and FilePicker threw "not implemented" although the types declare it. As upstream `func (f *Field) Run() error { return Run(f) }`, each now runs the field as a one-field form, so `await NewSelect()…run()` behaves like `await Run(select)`, including `ErrUserAborted` on Ctrl+C.
+
+### Not yet ported
+
+- **Accessible mode.** `field.runAccessible()` and `form.withAccessible(true)` still do not prompt; upstream asks for each field in plain text.
+
 ## 1.1.1 — upstream themes, field spacing and README
 
 Same upstream target as 1.1.0 (huh v2.0.3 + `main` @ `ffb6a97`). Divergences found while making screenshots, each checked against upstream Go output.

@@ -13,6 +13,7 @@ import {
 import type { InputKeyMap, KeyMap } from "./keymap.js";
 import { NewDefaultKeyMap, cloneKeyMapSection } from "./keymap.js";
 import { type Theme, type FieldStyles, ThemeCharm } from "./theme.js";
+import { Run } from "./run.js";
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -318,7 +319,8 @@ export class Input implements Field {
 
   // -- Run stubs --
 
-  async run(): Promise<void> { throw new Error("not implemented"); }
+  /** Runs this field on its own, as upstream `Run(field)`. */
+  async run(): Promise<void> { return Run(this); }
   async runAccessible(_w: any, _r: any): Promise<void> { throw new Error("not implemented"); }
 }
 

@@ -20,6 +20,7 @@ import {
 } from "./field-input.js";
 import type { Field } from "./field-input.js";
 import { wrap } from "./wrap.js";
+import { Run } from "./run.js";
 
 /** lipgloss.Width: widest line of a (possibly multi-line) string. */
 function lipglossWidth(s: string): number {
@@ -243,7 +244,8 @@ export class Confirm implements Field {
 
   // -- Run methods (stubs) --
 
-  async run(): Promise<void> { throw new Error("not implemented"); }
+  /** Runs this field on its own, as upstream `Run(field)`. */
+  async run(): Promise<void> { return Run(this); }
   async runAccessible(_w: any, _r: any): Promise<void> { throw new Error("not implemented"); }
 
   // -- Private --
