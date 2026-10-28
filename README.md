@@ -10,6 +10,8 @@ Interactive terminal forms and prompts for TypeScript. A pure TypeScript port of
 
 Built on top of [@oakoliver/bubbletea](https://www.npmjs.com/package/@oakoliver/bubbletea), [@oakoliver/bubbles](https://www.npmjs.com/package/@oakoliver/bubbles), and [@oakoliver/lipgloss](https://www.npmjs.com/package/@oakoliver/lipgloss).
 
+**Read the article:** [Getting Started with Huh](https://engineering.oakoliver.com/articles/getting-started-huh-terminal-forms-typescript) · [Porting Huh from Go to TypeScript](https://engineering.oakoliver.com/articles/porting-go-huh-to-typescript-interactive-terminal-forms-zero-dependencies)
+
 ## Features
 
 - 7 field types: Input, Text, Select, MultiSelect, Confirm, Note, FilePicker
